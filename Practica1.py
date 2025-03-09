@@ -49,22 +49,25 @@ class Ocasional(Usuario):
         super().__init__(nif, nombre, telefono, direccion)
         self.recuso_en_uso = None
 
-class Uso():
-    def __init__(self, fecha:str, hora:str, nif:str, id_uso:str):
-        self.fecha = fecha
-        self.hora = hora
+class Accion():
+    def __init__(self, fecha:str, hora_solicitud:str, nif:str, id_uso:str):
+        self.fecha_solicitud = fecha
+        self.hora_solicitud = hora_solicitud
         self.nif = nif
         self.id_uso = id_uso
-    
 
+class Consulta(Accion):
+    def __init__(self, fecha:str, hora_solicitud:str, nif:str, id_uso:str):
+        super().__init__(fecha, hora_solicitud, nif, id_uso)
+        self.hora_devolucion = None
 
-class Prestamo():
-    def __init__(self, nro_prestamo:int, id_socio:str, fecha_prestamo:str, fecha_tope_devolucion:str):
-        self.nro_prestamo = nro_prestamo
-        self.id_socio = id_socio
-        self.fecha_prestamo = fecha_prestamo
-        self.fecha_tope_devolucion = fecha_tope_devolucion
-        self.fecha_devolucion = None
+class Prestamo(Accion):
+    def __init__(self, nro_socio:str, fecha_solicitud:str, hora_solicitud:str, nif:str, id_uso:str, fecha_max_devolucion:str):
+        super().__init__(fecha_solicitud, hora_solicitud, nif, id_uso)
+        self.nro_socio = nro_socio
+        self.fecha_max_devolucion = fecha_max_devolucion
+        self.fecha_devuelto = None
+
 
 class Biblioteca():
     def __init__(self):
@@ -117,7 +120,6 @@ class Biblioteca():
         return f"S{self.nro_socio:010d}"
     
     def guardar_datos(self):
-        # Implementar la lógica para guardar los datos en un archivo json
         with open("datos.json", "w", encoding="utf-8") as file:
             data = {
                 "libros": [libro.__dict__ for libro in self.libros],
@@ -136,12 +138,11 @@ class Biblioteca():
 
     
     def cargar_datos(self):
-        # Implementar la lógica para cargar los datos desde un archivo json
         try:
-            with open("datos.json", "r", encoding = "utf-8" ) as file:
+            with open("datos.json", "r", encoding = "utf-8") as file:
                 data = json.load(file)
                 self.libros = [Libro(**libro) for libro in data["libros"]]
-                self.revistas = [Revista(**revista) for revista in data["revistas"]]
+                self.revistas = [Revista(**{k: v for k, v in revista.items() if k != 'nro_ejemplares'}) for revista in data["revistas"]]
                 self.peliculas = [Pelicula(**pelicula) for pelicula in data["peliculas"]]
                 self.prestamos = [Prestamo(**prestamo) for prestamo in data["prestamos"]]
                 self.socios = [Socio(**socio) for socio in data["socios"]]
@@ -315,6 +316,22 @@ def mostrar_menu_prestamo_consulta():
                                 return
                             # // TODO
                             pass
+                else:
+                    print("El socio no existe.")
+                    while True:
+                        try:
+                            opcion = input("¿Deseas volver a ingresar el NIF? (S/N): ").upper()
+                        except KeyboardInterrupt:
+                            print("\nVolviendo al menú de recursos")
+                            return
+                        if opcion == "S":
+                            break
+                        elif opcion == "N":
+                            print("Volviendo al menú de recursos")
+                            return
+                        else:
+                            print("Opción inválida")
+                            continue
         elif eleccion == "C":
             while True:
                 try:
@@ -327,6 +344,10 @@ def mostrar_menu_prestamo_consulta():
                 else:
                     print("El NIF, NIE introducido no es válido.")
                     continue
+            socio = biblioteca.buscar_socio(nif)
+            if socio:
+                print("La persona es un socio.")
+
 
 
                            
@@ -646,8 +667,10 @@ def comprobar_dni(dni:str) -> tuple[bool, bool]:
 
 if __name__ == "__main__":
     biblioteca = Biblioteca()
-    biblioteca.libros.append(Libro("1", "Libro de prueba", 1, "Autor", "Título", "Editorial"))
-    biblioteca.revistas.append(Revista("1", "Revista de prueba", "Nombre", "Fecha", "Editorial"))
-    biblioteca.peliculas.append(Pelicula("1", "Película de prueba", 1, "Título", ("Actor1",), ("Actor2",), "Fecha", True))
-    biblioteca.guardar_datos()
+    biblioteca.cargar_datos()
+    print(biblioteca.libros)
+    print(biblioteca.revistas)
+    print(biblioteca.peliculas)
+    print(biblioteca.socios)
+    print(biblioteca.ocasionales)
     mostrar_menu_principal()
