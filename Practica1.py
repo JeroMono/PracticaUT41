@@ -12,7 +12,7 @@ class Libro(Recurso):
         self.autor = autor
         self.titulo = titulo
         self.editorial = editorial
-        # FALTA EL EJEM_PRESTAMO; //TODO
+        self.ejem_prestado = 0
 
 class Revista(Recurso):
     def __init__(self, id:str, descripcion:str, nombre:str, fecha_publicacion:str, editorial:str):
@@ -22,13 +22,14 @@ class Revista(Recurso):
         self.editorial = editorial
 
 class Pelicula(Recurso):
-    def __init__(self, id:str, descripcion:str, nro_ejemplares:int, titulo:str, actores_principales:tuple, actores_secundarios:tuple, fecha_publicacion:str, estado:bool):
+    def __init__(self, id:str, descripcion:str, nro_ejemplares:int, titulo:str, actores_principales:tuple, actores_secundarios:tuple, fecha_publicacion:str):
         super().__init__(id, descripcion, nro_ejemplares)
         self.titulo = titulo
         self.actores_principales = actores_principales
         self.actores_secundarios = actores_secundarios
         self.fecha_publicacion = fecha_publicacion
-        self.estado = estado
+        self.estado_local = True
+        self.estado_prestamo = True
 
 
 class Usuario():
@@ -43,11 +44,16 @@ class Socio(Usuario):
         super().__init__(nif, nombre, telefono, direccion)
         self.nro_socio = nro_socio
         self.ejemplares_prestados = []
+        self.recursos_en_consulta = None
+        self.fecha_solicitud_consulta = None
+        self.hora_solicitud_consulta = None
 
 class Ocasional(Usuario):
     def __init__(self, nif:str, nombre:str, telefono:str, direccion:str):
         super().__init__(nif, nombre, telefono, direccion)
-        self.recuso_en_uso = None
+        self.recuso_en_consulta = None
+        self.fecha_solicitud_consulta = None
+        self.hora_solicitud_consulta = None
 
 class Accion():
     def __init__(self, fecha:str, hora_solicitud:str, nif:str, id_uso:str):
@@ -82,6 +88,7 @@ class Biblioteca():
         self.nro_id_revista = 0
         self.nro_id_pelicula = 0
         self.nro_socio = 0
+        self.nro_consulta = 0
 
     def agregar_ejemplar(self, ejemplar:Recurso):
         self.ejemplares.append(ejemplar)
@@ -119,6 +126,14 @@ class Biblioteca():
         self.nro_socio += 1
         return f"S{self.nro_socio:010d}"
     
+    def generar_nro_consulta(self):
+        self.nro_consulta += 1
+        return f"CON-{self.nro_consulta:04d}"
+    
+    def generar_nro_prestamo(self):
+        self.nro_prestamo += 1
+        return f"PREST-{self.nro_prestamo:04d}"
+    
     def guardar_datos(self):
         with open("datos.json", "w", encoding="utf-8") as file:
             data = {
@@ -132,7 +147,8 @@ class Biblioteca():
                 "nro_id_libro": self.nro_id_libro,
                 "nro_id_revista": self.nro_id_revista,
                 "nro_id_pelicula": self.nro_id_pelicula,
-                "nro_socio": self.nro_socio
+                "nro_socio": self.nro_socio,
+                "nro_consulta": self.nro_consulta
             }
             json.dump(data, file, indent=4)
 
@@ -152,6 +168,7 @@ class Biblioteca():
                 self.nro_id_revista = data["nro_id_revista"]
                 self.nro_id_pelicula = data["nro_id_pelicula"]
                 self.nro_socio = data["nro_socio"]
+                self.nro_consulta = data["nro_consulta"]
         except FileNotFoundError:
             print("No se encontró el archivo de datos.")
         
@@ -289,64 +306,134 @@ def mostrar_menu_prestamo_consulta():
         except KeyboardInterrupt:
             print("\nVolviendo al menú de recursos")
             return
-        if eleccion == "P":
-            while True:
-                try:
-                    nif = input("Introduce el NIF del socio: ")
-                    if len(nif) != 9:
-                        raise ValueError
-                except ValueError:
-                    print("El NIF debe tener 9 caracteres.")
-                    continue
-                except KeyboardInterrupt:
-                    print("\nVolviendo al menú de recursos")
-                    return
-                socio = biblioteca.buscar_socio(nif)
-                if socio:
-                    print(f"El socio {socio.nombre} tiene {len(socio.ejemplares_prestados)} ejemplares prestados.")
-                    if len(socio.ejemplares_prestados) >= 3:
-                        print("El socio no puede tener más de 3 ejemplares prestados.")
-                        break
-                    else:
-                        while True:
-                            try:
-                                eleccion_tipo = input("Introduce el ID del recurso a prestar: ").upper()
-                            except KeyboardInterrupt:
-                                print("\nVolviendo al menú de recursos")
-                                return
-                            # // TODO
-                            pass
+        if eleccion in ["P", "C"]:
+            break
+        else:
+            print("Opción inválida. Debe ser P o C")
+            continue
+    if eleccion == "P":
+        while True:
+            try:
+                nif = input("Introduce el NIF del socio: ")
+                if len(nif) != 9:
+                    raise ValueError
+            except ValueError:
+                print("El NIF debe tener 9 caracteres.")
+                continue
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de recursos")
+                return
+            socio = biblioteca.buscar_socio(nif)
+            if socio:
+                print(f"El socio {socio.nombre} tiene {len(socio.ejemplares_prestados)} ejemplares prestados.")
+                if len(socio.ejemplares_prestados) >= 3:
+                    print("El socio no puede tener más de 3 ejemplares prestados.")
+                    break
                 else:
-                    print("El socio no existe.")
                     while True:
                         try:
-                            opcion = input("¿Deseas volver a ingresar el NIF? (S/N): ").upper()
+                            eleccion_tipo = input("Introduce el ID del recurso a prestar: ").upper()
                         except KeyboardInterrupt:
                             print("\nVolviendo al menú de recursos")
                             return
-                        if opcion == "S":
-                            break
-                        elif opcion == "N":
-                            print("Volviendo al menú de recursos")
-                            return
-                        else:
-                            print("Opción inválida")
-                            continue
-        elif eleccion == "C":
-            while True:
-                try:
-                    nif = input("Introduce el NIF de la persona: ")
-                except KeyboardInterrupt:
-                    print("\nVolviendo al menú de recursos")
+                        # // TODO
+
+
+                        # -->--->-->-->-->-->-->
+                        # -->--->-->-->-->-->-->
+                        # -->--->-->-->-->-->-->
+                        pass
+            else:
+                print("El socio no existe.")
+                while True:
+                    try:
+                        opcion = input("¿Deseas volver a ingresar el NIF? (S/N): ").upper()
+                    except KeyboardInterrupt:
+                        print("\nVolviendo al menú de recursos")
+                        return
+                    if opcion == "S":
+                        break
+                    elif opcion == "N":
+                        print("Volviendo al menú de recursos")
+                        return
+                    else:
+                        print("Opción inválida")
+                        continue
+    elif eleccion == "C":
+        while True:
+            try:
+                nif = input("Introduce el NIF de la persona: ")
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de recursos")
+                return
+            if comprobar_dni(nif):
+                break
+            else:
+                print("El NIF, NIE introducido no es válido.")
+                continue
+        usuario = biblioteca.buscar_socio(nif)
+        if usuario:
+            print("La persona es un socio.")
+            if usuario.recursos_en_consulta:
+                print(f"El usuario {usuario.nombre} ya tiene un recurso en consulta.")
+                return
+        else:
+            usuario = biblioteca.buscar_ocasional(nif)
+            if usuario:
+                print("La persona es un usuario ocasional.")
+                if usuario.recuso_en_consulta:
+                    print(f"El usuario ocasional {usuario.nombre} ya tiene un recurso en consulta.")
                     return
-                if comprobar_dni(nif):
+            else:
+                print("La persona no está registrada en la biblioteca.")
+                print("Registrando nuevo usuario ocasional.")
+                while True:
+                    try:
+                        nombre = input("Introduce el nombre del usuario: ")
+                    except KeyboardInterrupt:
+                        print("\nVolviendo al menú de recursos")
+                        return
+                    if nombre:
+                        break
+                    else:
+                        print("El nombre no puede estar vacío.")
+                        continue
+                
+                while True:
+                    try:
+                        telefono = input("Introduce el teléfono del usuario: ")
+                        if not telefono.isdigit():
+                            raise ValueError
+                    except ValueError:
+                        print("El teléfono debe ser un número.")
+                        continue
+                    except KeyboardInterrupt:
+                        print("\nVolviendo al menú de recursos")
+                        return
                     break
-                else:
-                    print("El NIF, NIE introducido no es válido.")
-                    continue
-            socio = biblioteca.buscar_socio(nif)
-            if socio:
-                print("La persona es un socio.")
+                
+                while True:
+                    try:
+                        direccion = input("Introduce la dirección del usuario: ")
+                    except KeyboardInterrupt:
+                        print("\nVolviendo al menú de recursos")
+                        return
+                    if direccion:
+                        break
+                    else:
+                        print("La dirección no puede estar vacía.")
+                        continue
+
+                usuario = Ocasional(nif, nombre, telefono, direccion)
+                biblioteca.agregar_ocasional(usuario)
+                print(f"El usuario ocasional {nombre} ha sido registrado.")
+                biblioteca.guardar_datos()
+        while True:
+            recurso_consulta = encontrar_recurso()
+            if recurso_consulta:
+
+                
+                
 
 
 
@@ -596,6 +683,209 @@ def configurar_pelicula():
         biblioteca.peliculas.append(pelicula)
         print(f"Se ha añadido la película '{titulo}' a la biblioteca.")
         biblioteca.guardar_datos() 
+
+def encontrar_recurso():
+    while True:
+        try:
+            tipo = input("Introduce el tipo de recurso (libro/revista/pelicula): ").lower()
+        except KeyboardInterrupt:
+            print("\nVolviendo al menú de recursos")
+            return
+        if tipo in ["libro", "revista", "pelicula"]:
+            break
+        else:
+            print("Opción inválida. Debe ser libro, revista o pelicula.")
+            continue
+    if tipo == "libro":
+        filtro = []
+        while True:
+            try:
+                titulo = input("Introduce el título del libro: ")
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de recursos")
+                return
+            else:
+                if titulo:
+                    break
+                else:
+                    print("El título no puede estar vacío.")
+                    continue
+        for libro in biblioteca.libros:
+            if isinstance(libro, Libro) and libro.titulo == titulo:
+                filtro.append(libro)
+        if filtro:
+            if len(filtro) == 1:
+                print(f"Solo hay un título llamado '{titulo}' en la biblioteca.")
+                return filtro[0]
+            else:
+                print(f"Existen varios libros con el título '{titulo}' en la biblioteca.")
+                for libro in filtro:
+                    print(f"ID: {libro.id}, Autor: {libro.autor}, Editorial: {libro.editorial}")
+        else:
+            print(f"No se encontró ningún libro con el título '{titulo}'.")
+            return None
+        while True:
+            try:
+                autor = input("Introduce el autor del libro: ")
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de recursos")
+                return
+            else:
+                if autor:
+                    break
+                else:
+                    print("El autor no puede estar vacío.")
+                    continue
+        for libro in filtro:
+            if libro.autor != autor:
+                filtro.remove(libro)
+        if filtro:
+            if len(filtro) == 1:
+                print(f"El libro '{titulo}' de {autor} existe en la biblioteca.")
+                return filtro[0]
+            else:
+                print(f"El libro '{titulo}' de {autor} tiene {len(filtro)} editoriales en la biblioteca.")
+                for libro in filtro:
+                    print(f"Libro: {titulo}, Editorial: {libro.editorial}")
+        else:
+            print(f"No se encontró ningún libro de {autor} con el título '{titulo}'.")
+            return None
+        while True:
+            try:
+                editorial = input("Introduce la editorial del libro: ")
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de recursos")
+                return
+            else:
+                if editorial:
+                    break
+                else:
+                    print("La editorial no puede estar vacía.")
+                    continue
+        for libro in filtro:
+            if libro.editorial == editorial:
+                return libro
+        print(f"No se encontró ningún libro de {autor} con el título '{titulo}' y editorial '{editorial}'.")
+        return None
+    elif tipo == "revista":
+        while True:
+            try:
+                nombre = input("Introduce el nombre de la revista: ")
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de recursos")
+                return
+            else:
+                if nombre:
+                    break
+                else:
+                    print("El nombre no puede estar vacío.")
+                    continue
+        filtro = []
+        for revista in biblioteca.revistas:
+            if isinstance(revista, Revista) and revista.nombre == nombre:
+                filtro.append(revista)
+
+        if filtro:
+            if len(filtro) == 1:
+                print(f"Solo hay una revista llamada '{nombre}' en la biblioteca.")
+                return filtro[0]
+            else:
+                print(f"Existen varias revistas con el nombre '{nombre}' en la biblioteca.")
+                for revista in filtro:
+                    print(f"ID: {revista.id}, Fecha de publicación: {revista.fecha_publicacion}, Editorial: {revista.editorial}")
+
+        else:
+            print(f"No se encontró ninguna revista con el nombre '{nombre}'.")
+            return None
+        
+        while True:
+            try:
+                editorial = input("Introduce la editorial de la revista: ")
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de recursos")
+                return
+            else:
+                if editorial:
+                    break
+                else:
+                    print("La editorial no puede estar vacía.")
+                    continue
+        for revista in filtro:
+            if revista.editorial != editorial:
+                filtro.remove(revista)
+        if filtro:
+            if len(filtro) == 1:
+                print(f"Solo hay una revista llamada '{nombre}' de {editorial} en la biblioteca.")
+                return filtro[0]
+            else:
+                print(f"Existen varias revistas con el nombre '{nombre}' y editorial '{editorial}' en la biblioteca.")
+                for revista in filtro:
+                    print(f"Revista: {revista.nombre}, Fecha de publicación: {revista.fecha_publicacion}")
+        else:
+            print(f"No se encontró ninguna revista con el nombre '{nombre}' y editorial '{editorial}'.")
+
+        while True:
+            fecha_publicacion = configurar_fecha_publicacion()
+            if fecha_publicacion:
+                break
+            else:
+                print("Cancelando búsqueda de revista.")
+                return None
+        for revista in filtro:
+            if revista.fecha_publicacion == fecha_publicacion:
+                return revista
+        print(f"No se encontró ninguna revista con el nombre '{nombre}', editorial '{editorial}' y fecha de publicación '{fecha_publicacion}'.")
+        return None
+    elif tipo == "pelicula":
+        while True:
+            try:
+                titulo = input("Introduce el título de la película: ")
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de recursos")
+                return
+            else:
+                if titulo:
+                    break
+                else:
+                    print("El título no puede estar vacío.")
+                    continue
+        filtro = []
+        for pelicula in biblioteca.peliculas:
+            if isinstance(pelicula, Pelicula) and pelicula.titulo == titulo:
+                filtro.append(pelicula)
+        if filtro:
+            if len(filtro) == 1:
+                print(f"Solo hay una película llamada '{titulo}' en la biblioteca.")
+                return filtro[0]
+            else:
+                print(f"Existen varias películas con el título '{titulo}' en la biblioteca.")
+                for pelicula in filtro:
+                    print(f"ID: {pelicula.id}, Fecha de publicación: {pelicula.fecha_publicacion}")
+        else:
+            print(f"No se encontró ninguna película con el título '{titulo}'.")
+            return None
+        while True:
+            try:
+                fecha_publicacion = input("Introduce la fecha de publicación de la película: ")
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de recursos")
+                return
+            else:
+                if fecha_publicacion:
+                    break
+                else:
+                    print("La fecha de publicación no puede estar vacía.")
+                    continue
+        for pelicula in filtro:
+            if pelicula.fecha_publicacion != fecha_publicacion:
+                filtro.remove(pelicula)
+        if filtro:
+            print(f"Encontrada una película llamada '{titulo}' con fecha de publicación {fecha_publicacion} en la biblioteca.")
+        else:
+            print(f"No se encontró ninguna película con el título '{titulo}' y fecha de publicación {fecha_publicacion}.")
+        return None
+        
+            
 
 
 def buscar_libro(titulo:str, autor:str, editorial:str) -> Recurso:
