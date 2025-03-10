@@ -431,9 +431,16 @@ def mostrar_menu_prestamo_consulta():
         while True:
             recurso_consulta = encontrar_recurso()
             if recurso_consulta:
+                
 
+            
+
+
+            
                 
-                
+                    
+
+
 
 
 
