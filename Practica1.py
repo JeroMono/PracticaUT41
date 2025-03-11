@@ -16,7 +16,7 @@ class Libro(Recurso):
         return hash((self.id, self.descripcion, self.autor, self.titulo, self.editorial))
     
     def __repr__(self):
-        return f"Libro(titulo={self.titulo}, autor={self.autor}, editorial={self.editorial})"
+        return f"Libro(titulo={self.titulo}, autor={self.autor}, editorial={self.editorial}, id={self.id})"
 
 @dataclass
 class EjemplarLibro:
@@ -70,11 +70,17 @@ class Socio(Usuario):
     fecha_solicitud_consulta: any = None
     hora_solicitud_consulta: any = None
 
+    def __hash__(self):
+        return hash((self.nif, self.nombre, self.telefono, self.direccion, self.nro_socio))
+
 @dataclass
 class Ocasional(Usuario):
     recuso_en_consulta: any = None
     fecha_solicitud_consulta: any = None
     hora_solicitud_consulta: any = None
+
+    def __hash__(self):
+        return hash((self.nif, self.nombre, self.telefono, self.direccion))
 
 @dataclass
 class Accion:
@@ -100,8 +106,8 @@ class Biblioteca:
         self.revistas = set()
         self.peliculas = {}
         self.prestamos = []
-        self.socios = []
-        self.ocasionales = []
+        self.socios = {}
+        self.ocasionales = {}
         self.nro_prestamo = 0
         self.nro_id_libro = 0
         self.nro_id_revista = 0
@@ -114,11 +120,14 @@ class Biblioteca:
         self.ejemplares.append(ejemplar)
 
     def agregar_socio(self, socio):
-        self.socios.append(socio)
+        self.socios[socio.nif] = socio
 
-    def buscar_socio(self, nif):
-        for socio in self.socios:
-            if socio.nif == nif:
+    def buscar_socio_nif(self, nif) -> Socio | None:
+        return self.socios.get(nif)
+    
+    def buscar_socio_nro_socio(self, nro_socio) -> Socio | None:
+        for socio in self.socios.values():
+            if socio.nro_socio == nro_socio:
                 return socio
         return None
 
@@ -159,13 +168,17 @@ class Biblioteca:
             print("*****LIBROS: ")
             [print(libro.__dict__, self.libros[libro]) for libro in self.libros]
             print("*******")
+            print()
+            print("USUARIOS: ")
+            [print(socio, self.socios[socio].__dict__) for socio in self.socios]
+            print("*******")
             data = {
-                "libros": [[libro.__dict__, [ejemplar.__dict__ for ejemplar in self.ejemplares[libro]]] for libro in self.libros],
+                "libros": [[libro.__dict__, [ejemplar.__dict__ for ejemplar in self.libros[libro]]] for libro in self.libros],
                 "revistas": [revista.__dict__ for revista in self.revistas],
-                "peliculas": [[pelicula.__dict__, [ejemplar.__dict__ for ejemplar in self.ejemplares[pelicula]]] for pelicula in self.peliculas],
+                "peliculas": [[pelicula.__dict__, [ejemplar.__dict__ for ejemplar in self.peliculas[pelicula]]] for pelicula in self.peliculas],
                 "prestamos": [prestamo.__dict__ for prestamo in self.prestamos],
-                "socios": [socio.__dict__ for socio in self.socios],
-                "ocasionales": [ocasional.__dict__ for ocasional in self.ocasionales],
+                "socios": [[socio, self.socios[socio].__dict__] for socio in self.socios],
+                "ocasionales": [[ocasional,self.ocasionales[ocasional].__dict__] for ocasional in self.ocasionales],
                 "nro_prestamo": self.nro_prestamo,
                 "nro_id_libro": self.nro_id_libro,
                 "nro_id_revista": self.nro_id_revista,
@@ -179,12 +192,23 @@ class Biblioteca:
         try:
             with open("datos.json", "r", encoding="utf-8") as file:
                 data = json.load(file)
-                self.libros = {Libro(**libro[0]): [EjemplarLibro(**ejemplar) for ejemplar in libro[1]] for libro in data["libros"]}
+                self.libros = {}
+                for libro_data in data["libros"]:
+                    libro_dict = libro_data[0]
+                    libro = Libro(
+                        id=libro_dict["id"],
+                        descripcion=libro_dict["descripcion"],
+                        autor=libro_dict["autor"],
+                        titulo=libro_dict["titulo"],
+                        editorial=libro_dict["editorial"]
+                    )
+                    ejemplares = [EjemplarLibro(**ejemplar) for ejemplar in libro_data[1]]
+                    self.libros[libro] = ejemplares                
                 self.revistas = {Revista(**revista) for revista in data["revistas"]}
                 self.peliculas = {Pelicula(**pelicula[0]): [PeliculaBiblioteca(**ejemplar) if 'estado_local' in ejemplar else PeliculaPrestamo(**ejemplar) for ejemplar in pelicula[1]] for pelicula in data["peliculas"]}
                 self.prestamos = [Prestamo(**prestamo) for prestamo in data["prestamos"]]
-                self.socios = [Socio(**socio) for socio in data["socios"]]
-                self.ocasionales = [Ocasional(**ocasional) for ocasional in data["ocasionales"]]
+                self.socios = {socio[0]: Socio(**socio[1]) for socio in data["socios"]}
+                self.ocasionales = {ocasional[0]: Ocasional(**ocasional[1]) for ocasional in data["ocasionales"]}
                 self.nro_prestamo = data["nro_prestamo"]
                 self.nro_id_libro = data["nro_id_libro"]
                 self.nro_id_revista = data["nro_id_revista"]
@@ -344,7 +368,7 @@ def mostrar_menu_prestamo_consulta():
             except KeyboardInterrupt:
                 print("\nVolviendo al menú de recursos")
                 return
-            socio = biblioteca.buscar_socio(nif)
+            socio = biblioteca.buscar_socio_nif(nif)
             if socio:
                 print(f"El socio {socio.nombre} tiene {len(socio.ejemplares_prestados)} ejemplares prestados.")
                 if len(socio.ejemplares_prestados) >= 3:
@@ -392,7 +416,7 @@ def mostrar_menu_prestamo_consulta():
             else:
                 print("El NIF, NIE introducido no es válido.")
                 continue
-        usuario = biblioteca.buscar_socio(nif)
+        usuario = biblioteca.buscar_socio_nif(nif)
         if usuario:
             print("La persona es un socio.")
             if usuario.recursos_en_consulta:
@@ -453,16 +477,7 @@ def mostrar_menu_prestamo_consulta():
             recurso_consulta = encontrar_recurso()
             if recurso_consulta:
                 pass
-
-            
-
-
-            
-                
-                    
-
-
-
+            return
 
 
                            
@@ -483,11 +498,14 @@ def mostrar_menu_añadir_socio():
         if not comprobar_dni(nif):
             print("El NIF, NIE introducido no es válido.")
             continue
-        socio = biblioteca.buscar_socio(nif)
+        socio = biblioteca.buscar_socio_nif(nif)
         if socio:
             print(f"El socio {socio.nombre} ya existe.")
             while True:
-                opcion = input("¿Deseas cancelar el registro? (S/N): ").upper()
+                try:
+                    opcion = input("¿Deseas cancelar el registro? (S/N): ").upper()
+                except KeyboardInterrupt:
+                    opcion = "S"
                 if opcion == "S":
                     print("Registro cancelado.")
                     return
@@ -542,8 +560,6 @@ def mostrar_menu_añadir_socio():
     print(f"El socio {nombre} ha sido registrado con el número de socio {nro_socio}.")
     biblioteca.guardar_datos()
     
-            
-
 
 def mostrar_menu_eliminar_socio():
     pass
@@ -758,6 +774,7 @@ def encontrar_recurso():
         if filtro:
             if len(filtro) == 1:
                 print(f"Solo hay un título llamado '{titulo}' en la biblioteca.")
+                print(filtro[0])
                 return filtro[0]
             else:
                 print(f"Existen varios libros con el título '{titulo}' en la biblioteca.")
@@ -930,19 +947,19 @@ def encontrar_recurso():
             
 
 def buscar_libro(titulo:str, autor:str, editorial:str) -> Recurso:
-    for libro in biblioteca.ejemplares.keys():
+    for libro in biblioteca.libros.keys():
         if isinstance(libro, Libro) and libro.titulo == titulo and libro.autor == autor and libro.editorial == editorial:
             return libro
     return False
 
 def buscar_revista(nombre:str, fecha_publicacion:str, editorial:str) -> Recurso:
-    for revista in biblioteca.ejemplares.keys():
+    for revista in biblioteca.revistas:
         if isinstance(revista, Revista) and revista.nombre == nombre and revista.fecha_publicacion == fecha_publicacion and revista.editorial == editorial:
             return revista
     return False
 
 def buscar_pelicula(titulo:str, fecha_publicacion:str) -> Recurso:
-    for pelicula in biblioteca.ejemplares.keys():
+    for pelicula in biblioteca.peliculas.keys():
         if isinstance(pelicula, Pelicula) and pelicula.titulo == titulo and pelicula.fecha_publicacion == fecha_publicacion:
             return pelicula
     return False
@@ -974,7 +991,6 @@ def configurar_fecha_publicacion() -> str:
                 return
             break
 
-
 def comprobar_dni(dni:str) -> tuple[bool, bool]:
     """ Comprueba si un DNI, NIE válido"""
     LETRAS_NIF = "TRWAGMYFPDXBNJZSQVHLCKE"
@@ -999,9 +1015,9 @@ def test1():
     libro2 = Libro("1", "Libro de prueba", "Autor", "LIBRAZO", "Editorial")
     pelicula1 = Pelicula("1", "Descripción de la película", "Título", ("Actor1", "Actor2"), ("Secundario1"), "2023-10-01")
     revista1 = Revista("1", "Descripción de la revista", "Nombre", "2023-10-01", "Editorial")
-    biblioteca.ejemplares[libro1] = [EjemplarLibro(libro1.id, 1, ''), EjemplarLibro(libro1.id, 2,'')]
-    biblioteca.ejemplares[pelicula1] = [PeliculaBiblioteca(pelicula1.id, False), PeliculaPrestamo(pelicula1.id, False)]
-    biblioteca.ejemplares[revista1] = revista1
+    # biblioteca.ejemplares[libro1] = [EjemplarLibro(libro1.id, 1, ''), EjemplarLibro(libro1.id, 2,'')]
+    # biblioteca.ejemplares[pelicula1] = [PeliculaBiblioteca(pelicula1.id, False), PeliculaPrestamo(pelicula1.id, False)]
+    # biblioteca.ejemplares[revista1] = revista1
     biblioteca.libros[libro1] = [EjemplarLibro(libro1.id, 1, ''), EjemplarLibro(libro1.id, 2,'')]
     biblioteca.peliculas[pelicula1] = [PeliculaBiblioteca(pelicula1.id, False), PeliculaPrestamo(pelicula1.id, False)]
     biblioteca.revistas.add(revista1)
@@ -1014,24 +1030,24 @@ def test1():
     # print(biblioteca.ocasionales)
     # print(biblioteca.ejemplares)
     print()
-    print(biblioteca.ejemplares)
+    # print(biblioteca.ejemplares)
     print()
-    for elemento in biblioteca.ejemplares.keys():
-        print(elemento)
-        print(elemento.__class__.__name__)
-        if elemento.__class__.__name__ == "Libro":
-            print(elemento.__dict__)
-            print(biblioteca.ejemplares[elemento][0].__dict__['estado_accion'])
+    # for elemento in biblioteca.ejemplares.keys():
+    #     print(elemento)
+    #     print(elemento.__class__.__name__)
+    #     if elemento.__class__.__name__ == "Libro":
+    #         print(elemento.__dict__)
+    #         print(biblioteca.ejemplares[elemento][0].__dict__['estado_accion'])
 
     print("Aumentando el número de ejemplares")
-    ultimo_indice = biblioteca.ejemplares[libro1][-1].__dict__['nro_ejemplar']
+    ultimo_indice = biblioteca.libros[libro1][-1].__dict__['nro_ejemplar']
     print(ultimo_indice)	
-    biblioteca.ejemplares[libro1].append(EjemplarLibro(libro1.id, ultimo_indice + 1,''))
-    print(biblioteca.ejemplares[libro1])
-    ultimo_indice = len(biblioteca.ejemplares[libro1])
+    biblioteca.libros[libro1].append(EjemplarLibro(libro1.id, ultimo_indice + 1,''))
+    print(biblioteca.libros[libro1])
+    ultimo_indice = len(biblioteca.libros[libro1])
     print(ultimo_indice)	
-    biblioteca.ejemplares[libro1].append(EjemplarLibro(libro1.id, ultimo_indice + 1,''))
-    print(biblioteca.ejemplares[libro1])
+    biblioteca.libros[libro1].append(EjemplarLibro(libro1.id, ultimo_indice + 1,''))
+    print(biblioteca.libros[libro1])
 
 
 
@@ -1046,12 +1062,23 @@ def test1():
 
     #print(biblioteca.ejemplares.keys())
 
+    usuario1 = Socio( "12345678A", "Juan Pérez", "123456789", "Calle Falsa 123", "1")
+    usuario2 = Socio("87654321B", "Ana García", "987654321", "Calle Verdadera 456","2")
+    biblioteca.socios["12345678A"] = usuario1
+    biblioteca.socios["87654321B"] = usuario2
+    print(biblioteca.socios)
+
+    ocasional1 = Ocasional("23456789C", "Luis López", "234567890", "Calle Real 789")
+    ocasional2 = Ocasional("34567890D", "María Fernández", "345678901", "Calle Imaginaria 012")
+    biblioteca.ocasionales["23456789C"] = ocasional1
+    biblioteca.ocasionales["34567890D"] = ocasional2
+    print(biblioteca.ocasionales)
     
     biblioteca.guardar_datos()
     print()
-    print(biblioteca.ejemplares)
+    print(biblioteca.libros)
     print()
-    print([ejemplar.__dict__ for ejemplar in biblioteca.ejemplares])
+    print([ejemplar.__dict__ for ejemplar in biblioteca.libros])
 
 
 if __name__ == "__main__":
@@ -1064,6 +1091,10 @@ if __name__ == "__main__":
         biblioteca = Biblioteca()
         biblioteca.cargar_datos()
         print(biblioteca.libros)
+        for libro in biblioteca.libros:
+            print(libro.__dict__)
+            print(type(libro))
+
         print(biblioteca.revistas)
-        print(biblioteca.peliculas)
+        
         mostrar_menu_principal()
