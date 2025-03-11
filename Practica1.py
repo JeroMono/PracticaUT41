@@ -1,81 +1,98 @@
 import json
+from dataclasses import dataclass, field
 
-class Recurso():
-    def __init__(self, id:str, descripcion:str, nro_ejemplares:int):
-        self.id = id
-        self.descripcion = descripcion
-        self.nro_ejemplares = nro_ejemplares
+@dataclass
+class Recurso:
+    id: str
+    descripcion: str
 
+
+
+@dataclass
 class Libro(Recurso):
-    def __init__(self, id:str, descripcion:str, nro_ejemplares:int, autor:str, titulo:str, editorial:str):
-        super().__init__(id, descripcion, nro_ejemplares)
-        self.autor = autor
-        self.titulo = titulo
-        self.editorial = editorial
-        self.ejem_prestado = 0
+    autor: str
+    titulo: str
+    editorial: str
 
+    def __hash__(self):
+        return hash((self.id, self.autor, self.titulo, self.editorial))
+
+@dataclass
+class EjemplarLibro:
+    libro: str
+    nro_ejemplar: int
+    estado_accion: str = ''
+
+@dataclass
 class Revista(Recurso):
-    def __init__(self, id:str, descripcion:str, nombre:str, fecha_publicacion:str, editorial:str):
-        super().__init__(id, descripcion, 1)
-        self.nombre = nombre
-        self.fecha_publicacion = fecha_publicacion
-        self.editorial = editorial
+    nombre: str
+    fecha_publicacion: str
+    editorial: str
+    estado_consulta: bool = False
 
+    def __hash__(self):
+        return hash((self.id, self.nombre, self.fecha_publicacion, self.editorial))
+
+@dataclass
 class Pelicula(Recurso):
-    def __init__(self, id:str, descripcion:str, nro_ejemplares:int, titulo:str, actores_principales:tuple, actores_secundarios:tuple, fecha_publicacion:str):
-        super().__init__(id, descripcion, nro_ejemplares)
-        self.titulo = titulo
-        self.actores_principales = actores_principales
-        self.actores_secundarios = actores_secundarios
-        self.fecha_publicacion = fecha_publicacion
-        self.estado_local = True
-        self.estado_prestamo = True
+    titulo: str
+    actores_principales: tuple
+    actores_secundarios: tuple
+    fecha_publicacion: str
 
+    def  __hash__(self):
+        return hash((self.id, self.titulo, self.fecha_publicacion))
 
-class Usuario():
-    def __init__(self, nif:str, nombre:str, telefono:str, direccion:str):
-        self.nif = nif
-        self.nombre = nombre
-        self.telefono = telefono
-        self.direccion = direccion
+@dataclass
+class PeliculaBiblioteca:
+    pelicula: str
+    estado_local: bool
 
+@dataclass
+class PeliculaPrestamo:
+    pelicula: str
+    estado_prestamo: bool
+
+@dataclass
+class Usuario:
+    nif: str
+    nombre: str
+    telefono: str
+    direccion: str
+
+@dataclass
 class Socio(Usuario):
-    def __init__(self, nro_socio:str, nif:str, nombre:str, telefono:str, direccion:str):
-        super().__init__(nif, nombre, telefono, direccion)
-        self.nro_socio = nro_socio
-        self.ejemplares_prestados = []
-        self.recursos_en_consulta = None
-        self.fecha_solicitud_consulta = None
-        self.hora_solicitud_consulta = None
+    nro_socio: str
+    ejemplares_prestados: list = field(default_factory=list)
+    recursos_en_consulta: any = None
+    fecha_solicitud_consulta: any = None
+    hora_solicitud_consulta: any = None
 
+@dataclass
 class Ocasional(Usuario):
-    def __init__(self, nif:str, nombre:str, telefono:str, direccion:str):
-        super().__init__(nif, nombre, telefono, direccion)
-        self.recuso_en_consulta = None
-        self.fecha_solicitud_consulta = None
-        self.hora_solicitud_consulta = None
+    recuso_en_consulta: any = None
+    fecha_solicitud_consulta: any = None
+    hora_solicitud_consulta: any = None
 
-class Accion():
-    def __init__(self, fecha:str, hora_solicitud:str, nif:str, id_uso:str):
-        self.fecha_solicitud = fecha
-        self.hora_solicitud = hora_solicitud
-        self.nif = nif
-        self.id_uso = id_uso
+@dataclass
+class Accion:
+    fecha_solicitud: str
+    hora_solicitud: str
+    nif: str
+    id_uso: str
+    id_recurso: str
 
+@dataclass
 class Consulta(Accion):
-    def __init__(self, fecha:str, hora_solicitud:str, nif:str, id_uso:str):
-        super().__init__(fecha, hora_solicitud, nif, id_uso)
-        self.hora_devolucion = None
+    hora_devolucion: any = None
 
+@dataclass
 class Prestamo(Accion):
-    def __init__(self, nro_socio:str, fecha_solicitud:str, hora_solicitud:str, nif:str, id_uso:str, fecha_max_devolucion:str):
-        super().__init__(fecha_solicitud, hora_solicitud, nif, id_uso)
-        self.nro_socio = nro_socio
-        self.fecha_max_devolucion = fecha_max_devolucion
-        self.fecha_devuelto = None
+    nro_socio: str
+    fecha_max_devolucion: str
+    fecha_devuelto: any = None
 
-
-class Biblioteca():
+class Biblioteca:
     def __init__(self):
         self.libros = []
         self.revistas = []
@@ -89,29 +106,30 @@ class Biblioteca():
         self.nro_id_pelicula = 0
         self.nro_socio = 0
         self.nro_consulta = 0
+        self.ejemplares = {}
 
-    def agregar_ejemplar(self, ejemplar:Recurso):
+    def agregar_ejemplar(self, ejemplar):
         self.ejemplares.append(ejemplar)
 
-    def agregar_socio(self, socio:Socio):
+    def agregar_socio(self, socio):
         self.socios.append(socio)
-    
-    def buscar_socio(self, nif:str) -> Socio:
+
+    def buscar_socio(self, nif):
         for socio in self.socios:
             if socio.nif == nif:
                 return socio
         return None
 
-    def agregar_ocasional(self, ocasional:Ocasional):
+    def agregar_ocasional(self, ocasional):
         self.ocasionales.append(ocasional)
 
-    def buscar_ocasional(self, nif:str) -> Ocasional:
+    def buscar_ocasional(self, nif):
         for ocasional in self.ocasionales:
             if ocasional.nif == nif:
                 return ocasional
         return None
 
-    def generar_id_recurso(self, tipo:str):
+    def generar_id_recurso(self, tipo):
         if tipo == "libro":
             self.nro_id_libro += 1
             return "L" + f"{self.nro_id_libro:010d}"
@@ -121,19 +139,19 @@ class Biblioteca():
         elif tipo == "pelicula":
             self.nro_id_pelicula += 1
             return "P" + f"{self.nro_id_pelicula:010d}"
-        
+
     def generar_nro_socio(self):
         self.nro_socio += 1
         return f"S{self.nro_socio:010d}"
-    
+
     def generar_nro_consulta(self):
         self.nro_consulta += 1
         return f"CON-{self.nro_consulta:04d}"
-    
+
     def generar_nro_prestamo(self):
         self.nro_prestamo += 1
         return f"PREST-{self.nro_prestamo:04d}"
-    
+
     def guardar_datos(self):
         with open("datos.json", "w", encoding="utf-8") as file:
             data = {
@@ -152,10 +170,9 @@ class Biblioteca():
             }
             json.dump(data, file, indent=4)
 
-    
     def cargar_datos(self):
         try:
-            with open("datos.json", "r", encoding = "utf-8") as file:
+            with open("datos.json", "r", encoding="utf-8") as file:
                 data = json.load(file)
                 self.libros = [Libro(**libro) for libro in data["libros"]]
                 self.revistas = [Revista(**{k: v for k, v in revista.items() if k != 'nro_ejemplares'}) for revista in data["revistas"]]
@@ -171,7 +188,6 @@ class Biblioteca():
                 self.nro_consulta = data["nro_consulta"]
         except FileNotFoundError:
             print("No se encontró el archivo de datos.")
-        
 
 
 def mostrar_menu_principal():
@@ -431,7 +447,7 @@ def mostrar_menu_prestamo_consulta():
         while True:
             recurso_consulta = encontrar_recurso()
             if recurso_consulta:
-                
+                pass
 
             
 
@@ -587,11 +603,12 @@ def configurar_libro():
                 print("\nVolviendo al menú de recursos")
             break
         id_libro = biblioteca.generar_id_recurso("libro")
-        libro = Libro(id_libro, "Descripción del libro", ejemplares, autor, titulo, editorial)
+        libro = Libro(id_libro, "Descripción del libro", autor, titulo, editorial)
+        ejemplares[libro]= ejemplares
         biblioteca.libros.append(libro)
         print(f"Se ha añadido el libro '{titulo}' de {autor} a la biblioteca.")
         biblioteca.guardar_datos()
-        print(f"Se han añadido {ejemplares} ejemplares del libro '{titulo}'.")
+        print(f"Se han añadido {ejemplares[libro]} ejemplares del libro '{titulo}'.")
 
 def configurar_revista():
     try:
@@ -941,7 +958,7 @@ def configurar_fecha_publicacion() -> str:
                 print("\nVolviendo al menú de recursos")
                 return
             break
-            
+
 
 def comprobar_dni(dni:str) -> tuple[bool, bool]:
     """ Comprueba si un DNI, NIE válido"""
@@ -964,10 +981,20 @@ def comprobar_dni(dni:str) -> tuple[bool, bool]:
 
 if __name__ == "__main__":
     biblioteca = Biblioteca()
-    biblioteca.cargar_datos()
+    # biblioteca.cargar_datos()
+    biblioteca = Biblioteca()
+    libro1= Libro("1", "Libro de prueba", "Autor", "Título", "Editorial")
+    pelicula1 = Pelicula("1", "Descripción de la película", "Título", ("Actor1", "Actor2"), ("Secundario1"), "2023-10-01")
+    revista1 = Revista("1", "Descripción de la revista", "Nombre", "2023-10-01", "Editorial")
+    biblioteca.ejemplares[libro1] = [EjemplarLibro(libro1.id, 1, False), EjemplarLibro(libro1.id, 2, False)]
+    biblioteca.ejemplares[pelicula1] = [PeliculaBiblioteca(pelicula1.id, False), PeliculaPrestamo(pelicula1.id, False)]
+    biblioteca.ejemplares[revista1] = revista1
+    biblioteca.libros.append(libro1)
+    biblioteca.guardar_datos()
     print(biblioteca.libros)
     print(biblioteca.revistas)
     print(biblioteca.peliculas)
     print(biblioteca.socios)
     print(biblioteca.ocasionales)
+    print(biblioteca.ejemplares)
     mostrar_menu_principal()
