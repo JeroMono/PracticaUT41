@@ -6,8 +6,6 @@ class Recurso:
     id: str
     descripcion: str
 
-
-
 @dataclass
 class Libro(Recurso):
     autor: str
@@ -15,13 +13,17 @@ class Libro(Recurso):
     editorial: str
 
     def __hash__(self):
-        return hash((self.id, self.autor, self.titulo, self.editorial))
+        return hash((self.id, self.descripcion, self.autor, self.titulo, self.editorial))
+    
+    def __repr__(self):
+        return f"Libro(titulo={self.titulo}, autor={self.autor}, editorial={self.editorial})"
 
 @dataclass
 class EjemplarLibro:
     libro: str
     nro_ejemplar: int
     estado_accion: str = ''
+    
 
 @dataclass
 class Revista(Recurso):
@@ -40,7 +42,7 @@ class Pelicula(Recurso):
     actores_secundarios: tuple
     fecha_publicacion: str
 
-    def  __hash__(self):
+    def __hash__(self):
         return hash((self.id, self.titulo, self.fecha_publicacion))
 
 @dataclass
@@ -94,9 +96,9 @@ class Prestamo(Accion):
 
 class Biblioteca:
     def __init__(self):
-        self.libros = []
-        self.revistas = []
-        self.peliculas = []
+        self.libros = {}
+        self.revistas = set()
+        self.peliculas = {}
         self.prestamos = []
         self.socios = []
         self.ocasionales = []
@@ -154,10 +156,13 @@ class Biblioteca:
 
     def guardar_datos(self):
         with open("datos.json", "w", encoding="utf-8") as file:
+            print("*****LIBROS: ")
+            [print(libro.__dict__, self.libros[libro]) for libro in self.libros]
+            print("*******")
             data = {
-                "libros": [libro.__dict__ for libro in self.libros],
+                "libros": [[libro.__dict__, [ejemplar.__dict__ for ejemplar in self.ejemplares[libro]]] for libro in self.libros],
                 "revistas": [revista.__dict__ for revista in self.revistas],
-                "peliculas": [pelicula.__dict__ for pelicula in self.peliculas],
+                "peliculas": [[pelicula.__dict__, [ejemplar.__dict__ for ejemplar in self.ejemplares[pelicula]]] for pelicula in self.peliculas],
                 "prestamos": [prestamo.__dict__ for prestamo in self.prestamos],
                 "socios": [socio.__dict__ for socio in self.socios],
                 "ocasionales": [ocasional.__dict__ for ocasional in self.ocasionales],
@@ -174,9 +179,9 @@ class Biblioteca:
         try:
             with open("datos.json", "r", encoding="utf-8") as file:
                 data = json.load(file)
-                self.libros = [Libro(**libro) for libro in data["libros"]]
-                self.revistas = [Revista(**{k: v for k, v in revista.items() if k != 'nro_ejemplares'}) for revista in data["revistas"]]
-                self.peliculas = [Pelicula(**pelicula) for pelicula in data["peliculas"]]
+                self.libros = {Libro(**libro[0]): [EjemplarLibro(**ejemplar) for ejemplar in libro[1]] for libro in data["libros"]}
+                self.revistas = {Revista(**revista) for revista in data["revistas"]}
+                self.peliculas = {Pelicula(**pelicula[0]): [PeliculaBiblioteca(**ejemplar) if 'estado_local' in ejemplar else PeliculaPrestamo(**ejemplar) for ejemplar in pelicula[1]] for pelicula in data["peliculas"]}
                 self.prestamos = [Prestamo(**prestamo) for prestamo in data["prestamos"]]
                 self.socios = [Socio(**socio) for socio in data["socios"]]
                 self.ocasionales = [Ocasional(**ocasional) for ocasional in data["ocasionales"]]
@@ -582,15 +587,27 @@ def configurar_libro():
                         continue
                     except KeyboardInterrupt:
                         print("\nVolviendo al menú de recursos")
-                    libro.nro_ejemplares += ejemplares
+                    for unidad in range(1, ejemplares + 1):
+                        biblioteca.ejemplares[libro].append(EjemplarLibro(libro, biblioteca.ejemplares[libro][-1].__dict__['nro_ejemplar'] + 1))
                     print(f"Se han añadido {ejemplares} ejemplares del libro '{titulo}'.")
-                    break
+                    return
             elif opcion == "2":
                 print("\nVolviendo al menú de recursos")
                 break
             else:
                 print("Opción inválida")
     else:
+        print("El libro no existe en la biblioteca.")
+        while True:
+            try:
+                descripcion = input("Introduce la descripción del libro: ")
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de recursos")
+                return
+            if descripcion:
+                break
+            print("La descripción no puede estar vacía.")
+
         while True:
             try:
                 ejemplares = int(input("¿Cuántos ejemplares desea añadir? "))
@@ -603,12 +620,13 @@ def configurar_libro():
                 print("\nVolviendo al menú de recursos")
             break
         id_libro = biblioteca.generar_id_recurso("libro")
-        libro = Libro(id_libro, "Descripción del libro", autor, titulo, editorial)
-        ejemplares[libro]= ejemplares
-        biblioteca.libros.append(libro)
+        libro = Libro(id_libro, descripcion, autor, titulo, editorial)
+        biblioteca.ejemplares[libro] = []
+        for unidad in range(1, ejemplares + 1):
+            biblioteca.ejemplares[libro].append(EjemplarLibro(libro, unidad))
         print(f"Se ha añadido el libro '{titulo}' de {autor} a la biblioteca.")
         biblioteca.guardar_datos()
-        print(f"Se han añadido {ejemplares[libro]} ejemplares del libro '{titulo}'.")
+        print(f"Se han añadido {ejemplares} ejemplares del libro '{titulo}'.")
 
 def configurar_revista():
     try:
@@ -633,7 +651,7 @@ def configurar_revista():
     else:
         id_revista = biblioteca.generar_id_recurso("revista")
         revista = Revista(id_revista, "Descripción de la revista", nombre, fecha_publicacion, editorial)
-        biblioteca.revistas.append(revista)
+        biblioteca.revistas.add(revista)
         print(f"Se ha añadido la revista '{nombre}' con fecha {fecha_publicacion} a la biblioteca.")
         biblioteca.guardar_datos()
 
@@ -911,27 +929,24 @@ def encontrar_recurso():
         
             
 
-
 def buscar_libro(titulo:str, autor:str, editorial:str) -> Recurso:
-    for libro in biblioteca.libros:
-        if isinstance(libro, Libro):
-            if libro.titulo == titulo and libro.autor == autor and libro.editorial == editorial:
-                return libro
-    return None
+    for libro in biblioteca.ejemplares.keys():
+        if isinstance(libro, Libro) and libro.titulo == titulo and libro.autor == autor and libro.editorial == editorial:
+            return libro
+    return False
 
 def buscar_revista(nombre:str, fecha_publicacion:str, editorial:str) -> Recurso:
-    for revista in biblioteca.revistas:
-        if isinstance(revista, Revista):
-            if revista.nombre == nombre and revista.fecha_publicacion == fecha_publicacion and revista.editorial == editorial:
-                return revista
-    return None
+    for revista in biblioteca.ejemplares.keys():
+        if isinstance(revista, Revista) and revista.nombre == nombre and revista.fecha_publicacion == fecha_publicacion and revista.editorial == editorial:
+            return revista
+    return False
 
 def buscar_pelicula(titulo:str, fecha_publicacion:str) -> Recurso:
-    for pelicula in biblioteca.peliculas:
-        if isinstance(pelicula, Pelicula):
-            if pelicula.titulo == titulo and pelicula.fecha_publicacion == fecha_publicacion:
-                return pelicula
-    return None
+    for pelicula in biblioteca.ejemplares.keys():
+        if isinstance(pelicula, Pelicula) and pelicula.titulo == titulo and pelicula.fecha_publicacion == fecha_publicacion:
+            return pelicula
+    return False
+
 
 def configurar_fecha_publicacion() -> str:
     """Pide una fecha(mes/año) y la devuelve en formato AAAA-MM"""
@@ -979,22 +994,76 @@ def comprobar_dni(dni:str) -> tuple[bool, bool]:
     return False
 
 
-if __name__ == "__main__":
-    biblioteca = Biblioteca()
-    # biblioteca.cargar_datos()
-    biblioteca = Biblioteca()
-    libro1= Libro("1", "Libro de prueba", "Autor", "Título", "Editorial")
+def test1():
+    libro1 = Libro("1", "Libro de prueba", "Autor", "LIBRAZO", "Editorial")
+    libro2 = Libro("1", "Libro de prueba", "Autor", "LIBRAZO", "Editorial")
     pelicula1 = Pelicula("1", "Descripción de la película", "Título", ("Actor1", "Actor2"), ("Secundario1"), "2023-10-01")
     revista1 = Revista("1", "Descripción de la revista", "Nombre", "2023-10-01", "Editorial")
-    biblioteca.ejemplares[libro1] = [EjemplarLibro(libro1.id, 1, False), EjemplarLibro(libro1.id, 2, False)]
+    biblioteca.ejemplares[libro1] = [EjemplarLibro(libro1.id, 1, ''), EjemplarLibro(libro1.id, 2,'')]
     biblioteca.ejemplares[pelicula1] = [PeliculaBiblioteca(pelicula1.id, False), PeliculaPrestamo(pelicula1.id, False)]
     biblioteca.ejemplares[revista1] = revista1
-    biblioteca.libros.append(libro1)
-    biblioteca.guardar_datos()
-    print(biblioteca.libros)
-    print(biblioteca.revistas)
-    print(biblioteca.peliculas)
-    print(biblioteca.socios)
-    print(biblioteca.ocasionales)
+    biblioteca.libros[libro1] = [EjemplarLibro(libro1.id, 1, ''), EjemplarLibro(libro1.id, 2,'')]
+    biblioteca.peliculas[pelicula1] = [PeliculaBiblioteca(pelicula1.id, False), PeliculaPrestamo(pelicula1.id, False)]
+    biblioteca.revistas.add(revista1)
+    print(f"los libros {libro1} y {libro2} son iguales -> {libro1 == libro2}")
+    #biblioteca.libros.append(libro1)
+    # print(biblioteca.libros)
+    # print(biblioteca.revistas)
+    # print(biblioteca.peliculas)
+    # print(biblioteca.socios)
+    # print(biblioteca.ocasionales)
+    # print(biblioteca.ejemplares)
+    print()
     print(biblioteca.ejemplares)
-    mostrar_menu_principal()
+    print()
+    for elemento in biblioteca.ejemplares.keys():
+        print(elemento)
+        print(elemento.__class__.__name__)
+        if elemento.__class__.__name__ == "Libro":
+            print(elemento.__dict__)
+            print(biblioteca.ejemplares[elemento][0].__dict__['estado_accion'])
+
+    print("Aumentando el número de ejemplares")
+    ultimo_indice = biblioteca.ejemplares[libro1][-1].__dict__['nro_ejemplar']
+    print(ultimo_indice)	
+    biblioteca.ejemplares[libro1].append(EjemplarLibro(libro1.id, ultimo_indice + 1,''))
+    print(biblioteca.ejemplares[libro1])
+    ultimo_indice = len(biblioteca.ejemplares[libro1])
+    print(ultimo_indice)	
+    biblioteca.ejemplares[libro1].append(EjemplarLibro(libro1.id, ultimo_indice + 1,''))
+    print(biblioteca.ejemplares[libro1])
+
+
+
+    print("buscando libro")
+    print(buscar_libro("LIBRAZO", "Autor", "Editorial"))
+
+    print("Buscando revista")
+    print(buscar_revista("Nombre", "2023-10-01", "Editorial"))
+
+    print("Buscando película")
+    print(buscar_pelicula("Título", "2023-10-01"))
+
+    #print(biblioteca.ejemplares.keys())
+
+    
+    biblioteca.guardar_datos()
+    print()
+    print(biblioteca.ejemplares)
+    print()
+    print([ejemplar.__dict__ for ejemplar in biblioteca.ejemplares])
+
+
+if __name__ == "__main__":
+    
+    biblioteca = Biblioteca()
+    testing = False
+    if testing:
+        test1()
+    else:
+        biblioteca = Biblioteca()
+        biblioteca.cargar_datos()
+        print(biblioteca.libros)
+        print(biblioteca.revistas)
+        print(biblioteca.peliculas)
+        mostrar_menu_principal()
