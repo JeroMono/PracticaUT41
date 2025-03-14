@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 
 @dataclass
 class Recurso:
@@ -84,15 +85,18 @@ class Ocasional(Usuario):
 
 @dataclass
 class Accion:
-    fecha_solicitud: str
-    hora_solicitud: str
     nif: str
     id_uso: str
     id_recurso: str
+    fecha_solicitud: str
+    hora_solicitud: str
 
 @dataclass
 class Consulta(Accion):
     hora_devolucion: any = None
+
+    def __hash__(self):
+        return hash((self.nif, self.id_uso, self.id_recurso, self.fecha_solicitud, self.hora_solicitud))
 
 @dataclass
 class Prestamo(Accion):
@@ -100,12 +104,16 @@ class Prestamo(Accion):
     fecha_max_devolucion: str
     fecha_devuelto: any = None
 
+    def __hash__(self):
+        return hash((self.nif, self.id_uso, self.id_recurso, self.fecha_solicitud, self.hora_solicitud, self.fecha_max_devolucion))
+
 class Biblioteca:
     def __init__(self):
         self.libros = {}
         self.revistas = set()
         self.peliculas = {}
         self.prestamos = []
+        self.consultas = {}
         self.socios = {}
         self.ocasionales = {}
         self.nro_prestamo = 0
@@ -114,7 +122,6 @@ class Biblioteca:
         self.nro_id_pelicula = 0
         self.nro_socio = 0
         self.nro_consulta = 0
-        self.ejemplares = {}
 
     def agregar_ejemplar(self, ejemplar):
         self.ejemplares.append(ejemplar)
@@ -165,18 +172,12 @@ class Biblioteca:
 
     def guardar_datos(self):
         with open("datos.json", "w", encoding="utf-8") as file:
-            print("*****LIBROS: ")
-            [print(libro.__dict__, self.libros[libro]) for libro in self.libros]
-            print("*******")
-            print()
-            print("USUARIOS: ")
-            [print(socio, self.socios[socio].__dict__) for socio in self.socios]
-            print("*******")
             data = {
                 "libros": [[libro.__dict__, [ejemplar.__dict__ for ejemplar in self.libros[libro]]] for libro in self.libros],
                 "revistas": [revista.__dict__ for revista in self.revistas],
                 "peliculas": [[pelicula.__dict__, [ejemplar.__dict__ for ejemplar in self.peliculas[pelicula]]] for pelicula in self.peliculas],
                 "prestamos": [prestamo.__dict__ for prestamo in self.prestamos],
+                "consultas": [[key, value.__dict__] for key, value in self.consultas.items()],
                 "socios": [[socio, self.socios[socio].__dict__] for socio in self.socios],
                 "ocasionales": [[ocasional,self.ocasionales[ocasional].__dict__] for ocasional in self.ocasionales],
                 "nro_prestamo": self.nro_prestamo,
@@ -207,6 +208,7 @@ class Biblioteca:
                 self.revistas = {Revista(**revista) for revista in data["revistas"]}
                 self.peliculas = {Pelicula(**pelicula[0]): [PeliculaBiblioteca(**ejemplar) if 'estado_local' in ejemplar else PeliculaPrestamo(**ejemplar) for ejemplar in pelicula[1]] for pelicula in data["peliculas"]}
                 self.prestamos = [Prestamo(**prestamo) for prestamo in data["prestamos"]]
+                self.consultas = {consulta[0]: Consulta(**consulta[1]) for consulta in data["consultas"]}
                 self.socios = {socio[0]: Socio(**socio[1]) for socio in data["socios"]}
                 self.ocasionales = {ocasional[0]: Ocasional(**ocasional[1]) for ocasional in data["ocasionales"]}
                 self.nro_prestamo = data["nro_prestamo"]
@@ -373,21 +375,9 @@ def mostrar_menu_prestamo_consulta():
                 print(f"El socio {socio.nombre} tiene {len(socio.ejemplares_prestados)} ejemplares prestados.")
                 if len(socio.ejemplares_prestados) >= 3:
                     print("El socio no puede tener más de 3 ejemplares prestados.")
-                    break
+                    return
                 else:
-                    while True:
-                        try:
-                            eleccion_tipo = input("Introduce el ID del recurso a prestar: ").upper()
-                        except KeyboardInterrupt:
-                            print("\nVolviendo al menú de recursos")
-                            return
-                        # // TODO
-
-
-                        # -->--->-->-->-->-->-->
-                        # -->--->-->-->-->-->-->
-                        # -->--->-->-->-->-->-->
-                        pass
+                    break
             else:
                 print("El socio no existe.")
                 while True:
@@ -404,6 +394,48 @@ def mostrar_menu_prestamo_consulta():
                     else:
                         print("Opción inválida")
                         continue
+        while True:
+            recurso_prestamo = encontrar_recurso(LIBRO = True, PELICULA = True)
+            if recurso_prestamo:
+                break
+            else:
+                print("Saliendo del préstamo.")
+                return
+        if isinstance(recurso_prestamo, Libro):
+            ejemplar_disponible = False
+            for ejemplar in biblioteca.libros[recurso_prestamo]:
+                if ejemplar.estado_accion == "" and ejemplar_disponible == False:
+                    ejemplar_disponible = True
+                elif ejemplar.estado_accion == "" and ejemplar_disponible == True:
+                    ejemplar.estado_accion = "Prestamo"
+                    id_prestamo = biblioteca.generar_nro_prestamo()
+                    prestamo = Prestamo(socio.nif, id_prestamo, recurso_prestamo.id, datetime.now().strftime("%d/%m/%Y"), datetime.now().strftime("%H:%M:%S"), socio.nro_socio, (datetime.now() + timedelta(days=7)).strftime("%d/%m/%Y"))
+                    biblioteca.prestamos.append(prestamo)
+                    socio.ejemplares_prestados.append(id_prestamo)
+                    print(f"El libro '{recurso_prestamo.titulo}' ha sido prestado a {socio.nombre}.")
+                    biblioteca.guardar_datos()
+                    return
+            else:
+                if ejemplar_disponible:
+                    print("Solo queda un ejemplar disponible, para el consulta en sala.")
+                else:
+                    print("No hay ejemplares disponibles.")
+                return
+        elif isinstance(recurso_prestamo, Pelicula):
+            for ejemplar in biblioteca.peliculas[recurso_prestamo]:
+                if isinstance(ejemplar, PeliculaPrestamo):
+                    if ejemplar.estado_prestamo:
+                        print("La película ya está en uso.")
+                        continue
+                    else:
+                        ejemplar.estado_prestamo = True
+                        id_prestamo = biblioteca.generar_nro_prestamo()
+                        prestamo = Prestamo(socio.nif, id_prestamo, recurso_prestamo.id, datetime.now().strftime("%d/%m/%Y"), datetime.now().strftime("%H:%M:%S"), socio.nro_socio, (datetime.now() + timedelta(days=2)).strftime("%d/%m/%Y"))
+                        biblioteca.prestamos.append(prestamo)
+                        socio.ejemplares_prestados.append(id_prestamo)
+                        print(f"La película '{recurso_prestamo.titulo}' ha sido prestada a {socio.nombre}.")
+                        biblioteca.guardar_datos()
+                        return
     elif eleccion == "C":
         while True:
             try:
@@ -474,13 +506,60 @@ def mostrar_menu_prestamo_consulta():
                 print(f"El usuario ocasional {nombre} ha sido registrado.")
                 biblioteca.guardar_datos()
         while True:
-            recurso_consulta = encontrar_recurso()
+            recurso_consulta = encontrar_recurso(LIBRO=True, REVISTA=True, PELICULA=True)
             if recurso_consulta:
-                pass
-            return
+                if isinstance(recurso_consulta, Libro):
+                    for ejemplar in biblioteca.libros[recurso_consulta]:
+                        if ejemplar.estado_accion == "":
+                            ejemplar.estado_accion = "Consulta"
+                            id_consulta = biblioteca.generar_nro_consulta()
+                            recurso = (ejemplar.__dict__['libro'], ejemplar.__dict__['nro_ejemplar'])
+                            consulta = generar_consulta(usuario.nif, id_consulta, recurso)
+                            biblioteca.consultas[id_consulta] = consulta
+                            usuario.recursos_en_consulta = id_consulta
+                            usuario.recursos_en_consulta = recurso
+                            print(f"El libro '{recurso_consulta.titulo}' ha sido registrado para consulta.")
+                            biblioteca.guardar_datos()
+                            return
+                    else:
+                        print("No hay ejemplares disponibles para consulta.")
+                        continue
+                elif isinstance(recurso_consulta, Revista):
+                    if recurso_consulta.estado_consulta:
+                        print("La revista ya está en consulta.")
+                        continue
+                    else:
+                        
+                        print(f"La revista '{recurso_consulta.nombre}' ha sido registrada para consulta.")
+                        recurso_consulta.estado_consulta = True
+                        id_consulta = biblioteca.generar_nro_consulta()
+                        consulta = generar_consulta(usuario.nif, id_consulta, recurso_consulta.id)
+                        biblioteca.consultas[id_consulta] = consulta
+                        usuario.recursos_en_consulta = id_consulta
+                        biblioteca.guardar_datos()
+                        return
+                elif isinstance(recurso_consulta, Pelicula):
+                    for ejemplar in biblioteca.peliculas[recurso_consulta]:
+                        if isinstance(ejemplar, PeliculaBiblioteca):
+                            if ejemplar.estado_local:
+                                print("La película ya está en consulta.")
+                                continue
+                            else:
+                                ejemplar.estado_local = True
+                                id_consulta = biblioteca.generar_nro_consulta()
+                                consulta = generar_consulta(usuario.nif, id_consulta, recurso_consulta.id)
+                                biblioteca.consultas[id_consulta] = consulta
+                                usuario.recursos_en_consulta = id_consulta
+                                biblioteca.guardar_datos()
+                                print(f"La película '{recurso_consulta.titulo}' ha sido registrada para consulta.")
+                                return
+                    else:
+                        print("No hay ejemplar para uso en biblioteca.")
+                        break
+            else:
+                print("Saliendo de la consulta.")
+                return
 
-
-                           
 
 def mostrar_menu_devolver():
     pass
@@ -742,17 +821,38 @@ def configurar_pelicula():
         print(f"Se ha añadido la película '{titulo}' a la biblioteca.")
         biblioteca.guardar_datos() 
 
-def encontrar_recurso():
+def encontrar_recurso(LIBRO:bool = False, REVISTA:bool = False, PELICULA:bool = False):
     while True:
+        primera_coma = ", " if (LIBRO and (REVISTA or PELICULA)) else ""
+        segunda_coma = ", " if (REVISTA and PELICULA and LIBRO) else ""
+        texto_recursos = ("(L)ibro" if LIBRO else "") + primera_coma + ("(R)evista" if REVISTA else "") + segunda_coma + ("(P)elícula" if PELICULA else "")
+        lista_posibles = []
+        if LIBRO:
+            lista_posibles.append("libro")
+            lista_posibles.append("l")
+        if REVISTA:
+            lista_posibles.append("revista")
+            lista_posibles.append("r")
+        if PELICULA:
+            lista_posibles.append("pelicula")
+            lista_posibles.append("p")
         try:
-            tipo = input("Introduce el tipo de recurso (libro/revista/pelicula): ").lower()
+            tipo = input(f"Introduce el tipo de recurso ({texto_recursos}): ").lower()
         except KeyboardInterrupt:
             print("\nVolviendo al menú de recursos")
             return
-        if tipo in ["libro", "revista", "pelicula"]:
-            break
+        if tipo in lista_posibles:
+            if LIBRO and (tipo in ["libro", "l"]):
+                tipo = "libro"
+                break
+            elif REVISTA and (tipo in ["revista", "r"]):
+                tipo = "revista"
+                break
+            elif PELICULA and (tipo in ["pelicula", "p"]):
+                tipo = "pelicula"
+                break
         else:
-            print("Opción inválida. Debe ser libro, revista o pelicula.")
+            print(f"Opción inválida. Debe ser {texto_recursos}.")
             continue
     if tipo == "libro":
         filtro = []
@@ -964,6 +1064,12 @@ def buscar_pelicula(titulo:str, fecha_publicacion:str) -> Recurso:
             return pelicula
     return False
 
+def generar_consulta(nif:str, id_uso:str, id_recurso:str) -> Consulta:
+    """Genera una consulta a partir del NIF y el ID del recurso"""
+    fecha = datetime.now().strftime("%Y-%m-%d")
+    hora = datetime.now().strftime("%H:%M")
+    return Consulta(nif, id_uso, id_recurso, fecha, hora, None)
+
 
 def configurar_fecha_publicacion() -> str:
     """Pide una fecha(mes/año) y la devuelve en formato AAAA-MM"""
@@ -1011,16 +1117,24 @@ def comprobar_dni(dni:str) -> tuple[bool, bool]:
 
 
 def test1():
-    libro1 = Libro("1", "Libro de prueba", "Autor", "LIBRAZO", "Editorial")
-    libro2 = Libro("1", "Libro de prueba", "Autor", "LIBRAZO", "Editorial")
-    pelicula1 = Pelicula("1", "Descripción de la película", "Título", ("Actor1", "Actor2"), ("Secundario1"), "2023-10-01")
-    revista1 = Revista("1", "Descripción de la revista", "Nombre", "2023-10-01", "Editorial")
+    libro1 = Libro("L1", "Libro de prueba", "Autor", "LIBRAZO", "Editorial")
+    libro2 = Libro("L2", "Libro de prueba", "Autor", "LIBRAZO2", "Editorial")
+    libro3 = Libro("L3", "Libro de prueba", "Autor", "LIBRAZO3", "Editorial")
+    libro4 = Libro("L4", "Libro de prueba", "Autor", "LIBRAZO", "Santillana")
+    pelicula1 = Pelicula("P1", "Descripción de la película", "Título", ("Actor1", "Actor2"), ("Secundario1"), "2023-10-01")
+    revista1 = Revista("R1", "Descripción de la revista", "Nombre", "2023-10-01", "Editorial")
     # biblioteca.ejemplares[libro1] = [EjemplarLibro(libro1.id, 1, ''), EjemplarLibro(libro1.id, 2,'')]
     # biblioteca.ejemplares[pelicula1] = [PeliculaBiblioteca(pelicula1.id, False), PeliculaPrestamo(pelicula1.id, False)]
     # biblioteca.ejemplares[revista1] = revista1
     biblioteca.libros[libro1] = [EjemplarLibro(libro1.id, 1, ''), EjemplarLibro(libro1.id, 2,'')]
+    biblioteca.libros[libro2] = [EjemplarLibro(libro2.id, 1, ''), EjemplarLibro(libro2.id, 2,'')]
+    biblioteca.libros[libro3] = [EjemplarLibro(libro3.id, 1, ''), EjemplarLibro(libro3.id, 2,'')]
+    biblioteca.libros[libro4] = [EjemplarLibro(libro4.id, 1, ''), EjemplarLibro(libro4.id, 2,'')]
     biblioteca.peliculas[pelicula1] = [PeliculaBiblioteca(pelicula1.id, False), PeliculaPrestamo(pelicula1.id, False)]
     biblioteca.revistas.add(revista1)
+    biblioteca.nro_id_libro = 1
+    biblioteca.nro_id_pelicula = 1
+    biblioteca.nro_id_revista = 1
     print(f"los libros {libro1} y {libro2} son iguales -> {libro1 == libro2}")
     #biblioteca.libros.append(libro1)
     # print(biblioteca.libros)
@@ -1062,9 +1176,9 @@ def test1():
 
     #print(biblioteca.ejemplares.keys())
 
-    usuario1 = Socio( "12345678A", "Juan Pérez", "123456789", "Calle Falsa 123", "1")
+    usuario1 = Socio( "43491650F", "Juan Pérez", "123456789", "Calle Falsa 123", "1")
     usuario2 = Socio("87654321B", "Ana García", "987654321", "Calle Verdadera 456","2")
-    biblioteca.socios["12345678A"] = usuario1
+    biblioteca.socios["43491650F"] = usuario1
     biblioteca.socios["87654321B"] = usuario2
     print(biblioteca.socios)
 
@@ -1090,11 +1204,4 @@ if __name__ == "__main__":
     else:
         biblioteca = Biblioteca()
         biblioteca.cargar_datos()
-        print(biblioteca.libros)
-        for libro in biblioteca.libros:
-            print(libro.__dict__)
-            print(type(libro))
-
-        print(biblioteca.revistas)
-        
         mostrar_menu_principal()
