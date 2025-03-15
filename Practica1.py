@@ -112,7 +112,7 @@ class Biblioteca:
         self.libros = {}
         self.revistas = set()
         self.peliculas = {}
-        self.prestamos = []
+        self.prestamos = {}
         self.consultas = {}
         self.socios = {}
         self.ocasionales = {}
@@ -176,7 +176,7 @@ class Biblioteca:
                 "libros": [[libro.__dict__, [ejemplar.__dict__ for ejemplar in self.libros[libro]]] for libro in self.libros],
                 "revistas": [revista.__dict__ for revista in self.revistas],
                 "peliculas": [[pelicula.__dict__, [ejemplar.__dict__ for ejemplar in self.peliculas[pelicula]]] for pelicula in self.peliculas],
-                "prestamos": [prestamo.__dict__ for prestamo in self.prestamos],
+                "prestamos": [[key, value.__dict__] for key, value in self.prestamos.items()],
                 "consultas": [[key, value.__dict__] for key, value in self.consultas.items()],
                 "socios": [[socio, self.socios[socio].__dict__] for socio in self.socios],
                 "ocasionales": [[ocasional,self.ocasionales[ocasional].__dict__] for ocasional in self.ocasionales],
@@ -207,7 +207,7 @@ class Biblioteca:
                     self.libros[libro] = ejemplares                
                 self.revistas = {Revista(**revista) for revista in data["revistas"]}
                 self.peliculas = {Pelicula(**pelicula[0]): [PeliculaBiblioteca(**ejemplar) if 'estado_local' in ejemplar else PeliculaPrestamo(**ejemplar) for ejemplar in pelicula[1]] for pelicula in data["peliculas"]}
-                self.prestamos = [Prestamo(**prestamo) for prestamo in data["prestamos"]]
+                self.prestamos = {prestamo[0]: Prestamo(**prestamo[1]) for prestamo in data["prestamos"]}
                 self.consultas = {consulta[0]: Consulta(**consulta[1]) for consulta in data["consultas"]}
                 self.socios = {socio[0]: Socio(**socio[1]) for socio in data["socios"]}
                 self.ocasionales = {ocasional[0]: Ocasional(**ocasional[1]) for ocasional in data["ocasionales"]}
@@ -427,7 +427,7 @@ def mostrar_menu_prestamo_consulta():
             else:
                 print("Saliendo del préstamo.")
                 return
-        ejemplar = comprobar_estado_recurso(recurso_prestamo, True)
+        ejemplar = comprobar_estado_recurso(recurso_prestamo)
         if ejemplar:
             ejemplar.estado_accion = "Prestamo"
             id_prestamo = biblioteca.generar_nro_prestamo()
@@ -438,7 +438,7 @@ def mostrar_menu_prestamo_consulta():
                 print(f"La película '{recurso_prestamo.titulo}' ha sido prestada a {socio.nombre}.")
                 recurso_prestamo = recurso_prestamo.id
             prestamo = Prestamo(socio.nif, id_prestamo, recurso_prestamo, datetime.now().strftime("%d/%m/%Y"), datetime.now().strftime("%H:%M:%S"), socio.nro_socio, (datetime.now() + timedelta(days=7)).strftime("%d/%m/%Y"))
-            biblioteca.prestamos.append(prestamo)
+            biblioteca.prestamos[id_prestamo] = prestamo
             socio.ejemplares_prestados.append(id_prestamo)
             biblioteca.guardar_datos()
             return
@@ -516,12 +516,8 @@ def mostrar_menu_prestamo_consulta():
                 biblioteca.guardar_datos()
         while True:
             recurso_consulta = encontrar_recurso(LIBRO=True, REVISTA=True, PELICULA=True)
-            print(f"El recurso '{recurso_consulta}' ha sido registrado para consulta.")
-            input("Presiona Enter para continuar...")
             if recurso_consulta:
                 ejemplar = comprobar_estado_recurso(recurso_consulta, True)
-                print(f"El recurso '{ejemplar}' está disponible para consulta.")
-                input("Presiona Enter para continuar...")
                 if ejemplar:
                     id_consulta = biblioteca.generar_nro_consulta()
 
@@ -555,7 +551,86 @@ def mostrar_menu_prestamo_consulta():
 
 
 def mostrar_menu_devolver():
-    pass
+    while True:
+        try:
+            nif = input("Introduce el NIF/NIE de la persona: ")
+            if comprobar_dni(nif):
+                break
+        except KeyboardInterrupt:
+            print("\nVolviendo al menú de recursos")
+            return
+        else:
+            print("El NIF, NIE introducido no es válido.")
+            continue
+    usuario = biblioteca.buscar_socio_nif(nif)
+    if usuario:
+        print("La persona es un socio.")
+        if not usuario.ejemplares_prestados and not usuario.recursos_en_consulta:
+            print("El socio no tiene ejemplares prestados ni recursos en consulta.")
+            return
+        while True:
+            recurso_numero = 1
+            print(f"El socio {usuario.nombre} tiene {len(usuario.ejemplares_prestados)} ejemplares prestados y {len(usuario.recursos_en_consulta)} recursos en consulta.")
+            for prestamo in usuario.ejemplares_prestados:
+                print(f"{recurso_numero}. {prestamo}")
+                recurso_numero += 1
+            for consulta in usuario.recursos_en_consulta:
+                print(f"{recurso_numero}. {consulta}")
+                recurso_numero += 1
+            print("0. Volver")
+            try:
+                recurso = input("Seleccione el número del recurso a devolver o (T)odos: ")
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de recursos")
+                return
+            if recurso.upper() == "T":
+                for prestamo in usuario.ejemplares_prestados:
+                    biblioteca.prestamos[prestamo].fecha_devuelto = datetime.now().strftime("%d/%m/%Y")
+                    print(f"El recurso {prestamo} ha sido devuelto.")
+                usuario.ejemplares_prestados = []
+                biblioteca.consultas[usuario.recursos_en_consulta].hora_devolucion = datetime.now().strftime("%H:%M:%S")
+                print(f"El recurso {usuario.recursos_en_consulta} ha sido devuelto.")
+                usuario.recursos_en_consulta = None
+                biblioteca.guardar_datos()
+                print("Todos los recursos han sido devueltos.")
+                return
+            elif recurso == '0':
+                print("Volviendo al menú de recursos")
+                return
+            try:
+                recurso = int(recurso) - 1
+                if recurso < 0 or recurso >= len(usuario.ejemplares_prestados) + len(usuario.recursos_en_consulta):
+                    raise ValueError
+            except ValueError:
+                print("Número inválido.")
+                continue
+            if recurso < len(usuario.ejemplares_prestados):
+                prestamo = usuario.ejemplares_prestados[recurso]
+                biblioteca.prestamos[prestamo].fecha_devuelto = datetime.now().strftime("%d/%m/%Y")
+                usuario.ejemplares_prestados.remove(prestamo)
+                biblioteca.guardar_datos()
+                print(f"El recurso {prestamo} ha sido devuelto.")
+            elif recurso < len(usuario.ejemplares_prestados) + len(usuario.recursos_en_consulta):
+                consulta = usuario.recursos_en_consulta
+                biblioteca.consultas[consulta].hora_devolucion = datetime.now().strftime("%H:%M:%S")
+                usuario.recursos_en_consulta = None
+                biblioteca.guardar_datos()
+                print(f"El recurso {consulta} ha sido devuelto.")
+                
+            
+    else:
+        usuario = biblioteca.buscar_ocasional(nif)
+        if usuario:
+            print("La persona es un usuario ocasional.")
+            if not usuario.recurso_en_consulta:
+                print("El usuario ocasional no tiene recursos en consulta.")
+                return
+        else:
+            print("La persona no está registrada en la biblioteca. No tiene recursos en su poder.")
+            return
+            
+        
+        
 
 def mostrar_menu_renovar():
     pass
@@ -722,10 +797,9 @@ def configurar_revista():
     except KeyboardInterrupt:
         print("\nVolviendo al menú de recursos")
         return
-    try:
-        fecha_publicacion = input("Introduce la fecha de publicación de la revista: ")
-    except KeyboardInterrupt:
-        print("\nVolviendo al menú de recursos")
+    fecha_publicacion = configurar_fecha_publicacion()
+    if not fecha_publicacion:
+        print("Fecha de publicación no válida.")
         return
     try:
         editorial = input("Introduce la editorial de la revista: ")
@@ -888,16 +962,18 @@ def encontrar_recurso(LIBRO:bool = False, REVISTA:bool = False, PELICULA:bool = 
                 else:
                     print("El autor no puede estar vacío.")
                     continue
+        filtro2 = []
         for libro in filtro:
-            if libro.autor != autor:
-                filtro.remove(libro)
-        if filtro:
-            if len(filtro) == 1:
+            if libro.autor == autor:
+                filtro2.append(libro)
+        del filtro
+        if filtro2:
+            if len(filtro2) == 1:
                 print(f"El libro '{titulo}' de {autor} existe en la biblioteca.")
-                return filtro[0]
+                return filtro2[0]
             else:
-                print(f"El libro '{titulo}' de {autor} tiene {len(filtro)} editoriales en la biblioteca.")
-                for libro in filtro:
+                print(f"El libro '{titulo}' de {autor} tiene {len(filtro2)} editoriales en la biblioteca.")
+                for libro in filtro2:
                     print(f"Libro: {titulo}, Editorial: {libro.editorial}")
         else:
             print(f"No se encontró ningún libro de {autor} con el título '{titulo}'.")
@@ -914,7 +990,7 @@ def encontrar_recurso(LIBRO:bool = False, REVISTA:bool = False, PELICULA:bool = 
                 else:
                     print("La editorial no puede estar vacía.")
                     continue
-        for libro in filtro:
+        for libro in filtro2:
             if libro.editorial == editorial:
                 return libro
         print(f"No se encontró ningún libro de {autor} con el título '{titulo}' y editorial '{editorial}'.")
@@ -962,16 +1038,18 @@ def encontrar_recurso(LIBRO:bool = False, REVISTA:bool = False, PELICULA:bool = 
                 else:
                     print("La editorial no puede estar vacía.")
                     continue
+        filtro2 = []
         for revista in filtro:
-            if revista.editorial != editorial:
-                filtro.remove(revista)
-        if filtro:
-            if len(filtro) == 1:
+            if revista.editorial == editorial:
+                filtro2.append(revista)
+        del filtro
+        if filtro2:
+            if len(filtro2) == 1:
                 print(f"Solo hay una revista llamada '{nombre}' de {editorial} en la biblioteca.")
-                return filtro[0]
+                return filtro2[0]
             else:
                 print(f"Existen varias revistas con el nombre '{nombre}' y editorial '{editorial}' en la biblioteca.")
-                for revista in filtro:
+                for revista in filtro2:
                     print(f"Revista: {revista.nombre}, Fecha de publicación: {revista.fecha_publicacion}")
         else:
             print(f"No se encontró ninguna revista con el nombre '{nombre}' y editorial '{editorial}'.")
@@ -983,7 +1061,7 @@ def encontrar_recurso(LIBRO:bool = False, REVISTA:bool = False, PELICULA:bool = 
             else:
                 print("Cancelando búsqueda de revista.")
                 return None
-        for revista in filtro:
+        for revista in filtro2:
             if revista.fecha_publicacion == fecha_publicacion:
                 return revista
         print(f"No se encontró ninguna revista con el nombre '{nombre}', editorial '{editorial}' y fecha de publicación '{fecha_publicacion}'.")
@@ -1028,16 +1106,36 @@ def encontrar_recurso(LIBRO:bool = False, REVISTA:bool = False, PELICULA:bool = 
                 else:
                     print("La fecha de publicación no puede estar vacía.")
                     continue
+        filtro2 = []
         for pelicula in filtro:
-            if pelicula.fecha_publicacion != fecha_publicacion:
-                filtro.remove(pelicula)
-        if filtro:
-            print(f"Encontrada una película llamada '{titulo}' con fecha de publicación {fecha_publicacion} en la biblioteca.")
+            if pelicula.fecha_publicacion == fecha_publicacion:
+                filtro2.append(pelicula)
+        del filtro
+        if filtro2:
+            if len(filtro2) == 1:
+                print(f"Encontrada una película llamada '{titulo}' con fecha de publicación {fecha_publicacion} en la biblioteca.")
+                return filtro2[0]
+            else:                
+                cantidad = range(1, len(filtro2) + 1)
+                while True:
+                    print(f"Existen varias películas con el título '{titulo}' y fecha de publicación {fecha_publicacion} en la biblioteca.")
+                    for i in cantidad:
+                        print(f"Película: {filtro2[i-1].titulo}, ID: {filtro2[i-1].id}")
+                    try:
+                        opcion = int(input("Seleccione el número de la película que desea: "))
+                    except ValueError:
+                        print("Entrada inválida. Debe ser un número entero.")
+                        continue
+                    except KeyboardInterrupt:
+                        print("\nVolviendo al menú de recursos")
+                        return
+                    if opcion in cantidad:
+                        return filtro2[opcion - 1]
+                
         else:
             print(f"No se encontró ninguna película con el título '{titulo}' y fecha de publicación {fecha_publicacion}.")
         return None
         
-            
 
 def buscar_libro(titulo:str, autor:str, editorial:str) -> Recurso:
     for libro in biblioteca.libros.keys():
@@ -1088,7 +1186,7 @@ def configurar_fecha_publicacion() -> str:
             except KeyboardInterrupt:
                 print("\nVolviendo al menú de recursos")
                 return
-            break
+            return f"{año}-{mes:02d}"
 
 def comprobar_dni(dni:str) -> tuple[bool, bool]:
     """ Comprueba si un DNI, NIE válido"""
@@ -1114,11 +1212,11 @@ def comprobar_estado_recurso(recurso:Recurso, consulta:bool = False) -> str:
             ejemplar_disponible = False
             ejemplar_en_consulta = False
             for ejemplar in biblioteca.libros[recurso]:
-                if ejemplar.estado_accion == "" and ejemplar_disponible == False:
+                if not ejemplar.estado_accion and not ejemplar_disponible:
                     ejemplar_disponible = True
                 elif ejemplar.estado_accion == "Consulta":
                     ejemplar_en_consulta = True
-                elif ejemplar.estado_accion == "" and (ejemplar_disponible == True or ejemplar_en_consulta == True):
+                elif not ejemplar.estado_accion and (ejemplar_disponible or ejemplar_en_consulta):
                     return ejemplar
             else:
                 return None
@@ -1159,7 +1257,14 @@ def test1():
     libro3 = Libro("L3", "Libro de prueba", "Autor", "LIBRAZO3", "Editorial")
     libro4 = Libro("L4", "Libro de prueba", "Autor", "LIBRAZO", "Santillana")
     pelicula1 = Pelicula("P1", "Descripción de la película", "Título", ("Actor1", "Actor2"), ("Secundario1"), "2023-10-01")
-    revista1 = Revista("R1", "Descripción de la revista", "Nombre", "2023-10-01", "Editorial")
+    pelicula2 = Pelicula("P2", "Descripción de la película", "Título2", ("Actor1", "Actor2"), ("Secundario1"), "2023-10-01")
+    pelicula3 = Pelicula("P3", "Descripción de la película", "Título3", ("Actor1", "Actor2"), ("Secundario1"), "2023-10-01")
+    pelicula4 = Pelicula("P4", "Descripción de la película", "Título4", ("Actor1", "Actor2"), ("Secundario1"), "2023-10-01")
+    revista11 = Revista("R1", "Descripción de la revista", "Revista1", "2023-10", "Editorial")
+    revista12 = Revista("R2", "Descripción de la revista", "Revista1", "2023-11", "Editorial")
+    revista21 = Revista("R3", "Descripción de la revista", "Revista2", "2023-10", "Editorial")
+    revista22 = Revista("R4", "Descripción de la revista", "Revista2", "2023-09", "Editorial")
+    
     # biblioteca.ejemplares[libro1] = [EjemplarLibro(libro1.id, 1, ''), EjemplarLibro(libro1.id, 2,'')]
     # biblioteca.ejemplares[pelicula1] = [PeliculaBiblioteca(pelicula1.id, False), PeliculaPrestamo(pelicula1.id, False)]
     # biblioteca.ejemplares[revista1] = revista1
@@ -1168,10 +1273,16 @@ def test1():
     biblioteca.libros[libro3] = [EjemplarLibro(libro3.id, 1, ''), EjemplarLibro(libro3.id, 2,'')]
     biblioteca.libros[libro4] = [EjemplarLibro(libro4.id, 1, ''), EjemplarLibro(libro4.id, 2,'')]
     biblioteca.peliculas[pelicula1] = [PeliculaBiblioteca(pelicula1.id, False), PeliculaPrestamo(pelicula1.id, False)]
-    biblioteca.revistas.add(revista1)
-    biblioteca.nro_id_libro = 1
-    biblioteca.nro_id_pelicula = 1
-    biblioteca.nro_id_revista = 1
+    biblioteca.peliculas[pelicula2] = [PeliculaBiblioteca(pelicula2.id, False), PeliculaPrestamo(pelicula2.id, False)]
+    biblioteca.peliculas[pelicula3] = [PeliculaBiblioteca(pelicula3.id, False), PeliculaPrestamo(pelicula3.id, False)]
+    biblioteca.peliculas[pelicula4] = [PeliculaBiblioteca(pelicula4.id, False)]
+    biblioteca.revistas.add(revista11)
+    biblioteca.revistas.add(revista12)
+    biblioteca.revistas.add(revista21)
+    biblioteca.revistas.add(revista22)
+    biblioteca.nro_id_libro = 4
+    biblioteca.nro_id_pelicula = 4
+    biblioteca.nro_id_revista = 4
     print(f"los libros {libro1} y {libro2} son iguales -> {libro1 == libro2}")
     #biblioteca.libros.append(libro1)
     # print(biblioteca.libros)
@@ -1206,17 +1317,26 @@ def test1():
     print(buscar_libro("LIBRAZO", "Autor", "Editorial"))
 
     print("Buscando revista")
-    print(buscar_revista("Nombre", "2023-10-01", "Editorial"))
+    print(buscar_revista("Revista1", "2023-10-01", "Editorial"))
 
     print("Buscando película")
     print(buscar_pelicula("Título", "2023-10-01"))
 
     #print(biblioteca.ejemplares.keys())
 
-    usuario1 = Socio( "43491650F", "Juan Pérez", "123456789", "Calle Falsa 123", "1")
+    usuario1 = Socio("43491650F", "Juan Pérez", "123456789", "Calle Falsa 123", "1")
     usuario2 = Socio("87654321B", "Ana García", "987654321", "Calle Verdadera 456","2")
+    usuario3 = Socio("12345678Z", "Pedro Martínez", "123456789", "Calle Inventada 789","3")
+    usuario4 = Socio("87654321X", "María López", "987654321", "Calle Imaginaria 012","4")
+    usuario5 = Socio("34567890Q", "Luis Fernández", "234567890", "Calle Real 345","5")
+    usuario6 = Socio("56789012R", "Laura Sánchez", "345678901", "Calle Soñada 678","6")
+
     biblioteca.socios["43491650F"] = usuario1
     biblioteca.socios["87654321B"] = usuario2
+    biblioteca.socios["12345678Z"] = usuario3
+    biblioteca.socios["87654321X"] = usuario4
+    biblioteca.socios["34567890Q"] = usuario5
+    biblioteca.socios["56789012R"] = usuario6
     print(biblioteca.socios)
 
     ocasional1 = Ocasional("23456789C", "Luis López", "234567890", "Calle Real 789")
