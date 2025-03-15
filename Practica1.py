@@ -76,7 +76,7 @@ class Socio(Usuario):
 
 @dataclass
 class Ocasional(Usuario):
-    recuso_en_consulta: any = None
+    recurso_en_consulta: any = None
     fecha_solicitud_consulta: any = None
     hora_solicitud_consulta: any = None
 
@@ -344,7 +344,33 @@ def mostrar_menu_eliminar_recurso():
     pass
 
 def mostrar_menu_consultar_estado():
-    pass
+    recurso_prestamo = encontrar_recurso(LIBRO = True, REVISTA=True, PELICULA = True)
+    if isinstance(recurso_prestamo,Revista):
+        if comprobar_estado_recurso(recurso_prestamo, True):
+            print(f"El libro '{recurso_prestamo.nombre}' está disponible para consulta.")
+        else:
+            print(f"El libro '{recurso_prestamo.nombre}' no está disponible para consulta.")
+    elif isinstance(recurso_prestamo, Libro):
+        if comprobar_estado_recurso(recurso_prestamo, True):
+            print(f"La revista '{recurso_prestamo.titulo}' está disponible para consulta.")
+        else:
+            print(f"La revista '{recurso_prestamo.titulo}' no está disponible para consulta.")
+        if comprobar_estado_recurso(recurso_prestamo, False):
+            print(f"La revista '{recurso_prestamo.titulo}' está disponible para préstamo.")
+        else:
+            print(f"La revista '{recurso_prestamo.titulo}' no está disponible para préstamo.")
+    elif isinstance(recurso_prestamo, Pelicula):
+        if comprobar_estado_recurso(recurso_prestamo, True):
+            print(f"La película '{recurso_prestamo.titulo}' está disponible para consulta.")
+        else:
+            print(f"La película '{recurso_prestamo.titulo}' no está disponible para consulta.")
+        if comprobar_estado_recurso(recurso_prestamo, False):
+            print(f"El recurso '{recurso_prestamo.titulo}' está disponible para préstamo.")
+        else:
+            print(f"El recurso '{recurso_prestamo.titulo}' no está disponible para préstamo.")
+
+        
+
 
 def mostrar_menu_prestamo_consulta():
     while True:
@@ -401,41 +427,24 @@ def mostrar_menu_prestamo_consulta():
             else:
                 print("Saliendo del préstamo.")
                 return
-        if isinstance(recurso_prestamo, Libro):
-            ejemplar_disponible = False
-            for ejemplar in biblioteca.libros[recurso_prestamo]:
-                if ejemplar.estado_accion == "" and ejemplar_disponible == False:
-                    ejemplar_disponible = True
-                elif ejemplar.estado_accion == "" and ejemplar_disponible == True:
-                    ejemplar.estado_accion = "Prestamo"
-                    id_prestamo = biblioteca.generar_nro_prestamo()
-                    prestamo = Prestamo(socio.nif, id_prestamo, recurso_prestamo.id, datetime.now().strftime("%d/%m/%Y"), datetime.now().strftime("%H:%M:%S"), socio.nro_socio, (datetime.now() + timedelta(days=7)).strftime("%d/%m/%Y"))
-                    biblioteca.prestamos.append(prestamo)
-                    socio.ejemplares_prestados.append(id_prestamo)
-                    print(f"El libro '{recurso_prestamo.titulo}' ha sido prestado a {socio.nombre}.")
-                    biblioteca.guardar_datos()
-                    return
-            else:
-                if ejemplar_disponible:
-                    print("Solo queda un ejemplar disponible, para el consulta en sala.")
-                else:
-                    print("No hay ejemplares disponibles.")
-                return
-        elif isinstance(recurso_prestamo, Pelicula):
-            for ejemplar in biblioteca.peliculas[recurso_prestamo]:
-                if isinstance(ejemplar, PeliculaPrestamo):
-                    if ejemplar.estado_prestamo:
-                        print("La película ya está en uso.")
-                        continue
-                    else:
-                        ejemplar.estado_prestamo = True
-                        id_prestamo = biblioteca.generar_nro_prestamo()
-                        prestamo = Prestamo(socio.nif, id_prestamo, recurso_prestamo.id, datetime.now().strftime("%d/%m/%Y"), datetime.now().strftime("%H:%M:%S"), socio.nro_socio, (datetime.now() + timedelta(days=2)).strftime("%d/%m/%Y"))
-                        biblioteca.prestamos.append(prestamo)
-                        socio.ejemplares_prestados.append(id_prestamo)
-                        print(f"La película '{recurso_prestamo.titulo}' ha sido prestada a {socio.nombre}.")
-                        biblioteca.guardar_datos()
-                        return
+        ejemplar = comprobar_estado_recurso(recurso_prestamo, True)
+        if ejemplar:
+            ejemplar.estado_accion = "Prestamo"
+            id_prestamo = biblioteca.generar_nro_prestamo()
+            if isinstance(recurso_prestamo, Libro):
+                print(f"El libro '{recurso_prestamo.titulo}' ha sido prestado a {socio.nombre}.")
+                recurso_prestamo = (recurso_prestamo.__dict__['titulo'], ejemplar.__dict__['nro_ejemplar'])
+            elif isinstance(recurso_prestamo, Pelicula):
+                print(f"La película '{recurso_prestamo.titulo}' ha sido prestada a {socio.nombre}.")
+                recurso_prestamo = recurso_prestamo.id
+            prestamo = Prestamo(socio.nif, id_prestamo, recurso_prestamo, datetime.now().strftime("%d/%m/%Y"), datetime.now().strftime("%H:%M:%S"), socio.nro_socio, (datetime.now() + timedelta(days=7)).strftime("%d/%m/%Y"))
+            biblioteca.prestamos.append(prestamo)
+            socio.ejemplares_prestados.append(id_prestamo)
+            biblioteca.guardar_datos()
+            return
+        else:
+            print("El recurso no está disponible para préstamo.")
+            return
     elif eleccion == "C":
         while True:
             try:
@@ -458,7 +467,7 @@ def mostrar_menu_prestamo_consulta():
             usuario = biblioteca.buscar_ocasional(nif)
             if usuario:
                 print("La persona es un usuario ocasional.")
-                if usuario.recuso_en_consulta:
+                if usuario.recurso_en_consulta:
                     print(f"El usuario ocasional {usuario.nombre} ya tiene un recurso en consulta.")
                     return
             else:
@@ -507,55 +516,39 @@ def mostrar_menu_prestamo_consulta():
                 biblioteca.guardar_datos()
         while True:
             recurso_consulta = encontrar_recurso(LIBRO=True, REVISTA=True, PELICULA=True)
+            print(f"El recurso '{recurso_consulta}' ha sido registrado para consulta.")
+            input("Presiona Enter para continuar...")
             if recurso_consulta:
-                if isinstance(recurso_consulta, Libro):
-                    for ejemplar in biblioteca.libros[recurso_consulta]:
-                        if ejemplar.estado_accion == "":
-                            ejemplar.estado_accion = "Consulta"
-                            id_consulta = biblioteca.generar_nro_consulta()
-                            recurso = (ejemplar.__dict__['libro'], ejemplar.__dict__['nro_ejemplar'])
-                            consulta = generar_consulta(usuario.nif, id_consulta, recurso)
-                            biblioteca.consultas[id_consulta] = consulta
-                            usuario.recursos_en_consulta = id_consulta
-                            usuario.recursos_en_consulta = recurso
-                            print(f"El libro '{recurso_consulta.titulo}' ha sido registrado para consulta.")
-                            biblioteca.guardar_datos()
-                            return
-                    else:
-                        print("No hay ejemplares disponibles para consulta.")
-                        continue
-                elif isinstance(recurso_consulta, Revista):
-                    if recurso_consulta.estado_consulta:
-                        print("La revista ya está en consulta.")
-                        continue
-                    else:
-                        
-                        print(f"La revista '{recurso_consulta.nombre}' ha sido registrada para consulta.")
-                        recurso_consulta.estado_consulta = True
-                        id_consulta = biblioteca.generar_nro_consulta()
-                        consulta = generar_consulta(usuario.nif, id_consulta, recurso_consulta.id)
-                        biblioteca.consultas[id_consulta] = consulta
-                        usuario.recursos_en_consulta = id_consulta
-                        biblioteca.guardar_datos()
-                        return
-                elif isinstance(recurso_consulta, Pelicula):
-                    for ejemplar in biblioteca.peliculas[recurso_consulta]:
-                        if isinstance(ejemplar, PeliculaBiblioteca):
-                            if ejemplar.estado_local:
-                                print("La película ya está en consulta.")
-                                continue
-                            else:
-                                ejemplar.estado_local = True
-                                id_consulta = biblioteca.generar_nro_consulta()
-                                consulta = generar_consulta(usuario.nif, id_consulta, recurso_consulta.id)
-                                biblioteca.consultas[id_consulta] = consulta
-                                usuario.recursos_en_consulta = id_consulta
-                                biblioteca.guardar_datos()
-                                print(f"La película '{recurso_consulta.titulo}' ha sido registrada para consulta.")
-                                return
-                    else:
-                        print("No hay ejemplar para uso en biblioteca.")
-                        break
+                ejemplar = comprobar_estado_recurso(recurso_consulta, True)
+                print(f"El recurso '{ejemplar}' está disponible para consulta.")
+                input("Presiona Enter para continuar...")
+                if ejemplar:
+                    id_consulta = biblioteca.generar_nro_consulta()
+
+                    if isinstance(ejemplar, EjemplarLibro):
+                        ejemplar.estado_accion = "Consulta "
+                        print(f"El libro '{recurso_consulta.titulo}' ha sido registrado para consulta.")
+                        recurso_consulta = (recurso_consulta.__dict__['titulo'], ejemplar.__dict__['nro_ejemplar'])
+                    
+                    elif isinstance(ejemplar, Revista):
+                        ejemplar.estado_consulta = True
+                        print(f"La revista '{ejemplar.nombre}' ha sido registrada para consulta.")
+                        recurso_consulta = ejemplar.id
+                    
+                    elif isinstance(ejemplar, PeliculaBiblioteca):
+                        ejemplar.estado_local = True
+                        recurso_consulta = recurso_consulta.id
+                        print(f"La película '{recurso_consulta.titulo}' ha sido registrada para consulta.")
+
+                    consulta = generar_consulta(usuario.nif, id_consulta, recurso_consulta)
+                    biblioteca.consultas[id_consulta] = consulta
+                    usuario.recursos_en_consulta = id_consulta
+                    usuario.fecha_solicitud_consulta = datetime.now().strftime("%d/%m/%Y")
+                    usuario.hora_solicitud_consulta = datetime.now().strftime("%H:%M:%S")
+
+                    biblioteca.guardar_datos()
+                    print("Consulta registrada.")
+                    return
             else:
                 print("Saliendo de la consulta.")
                 return
@@ -819,7 +812,7 @@ def configurar_pelicula():
         pelicula = Pelicula(id_pelicula, "Descripción de la película", ejemplares, titulo, actores_principales, actores_secundarios, fecha_publicacion, True)
         biblioteca.peliculas.append(pelicula)
         print(f"Se ha añadido la película '{titulo}' a la biblioteca.")
-        biblioteca.guardar_datos() 
+        biblioteca.guardar_datos()
 
 def encontrar_recurso(LIBRO:bool = False, REVISTA:bool = False, PELICULA:bool = False):
     while True:
@@ -1114,6 +1107,50 @@ def comprobar_dni(dni:str) -> tuple[bool, bool]:
         else:
             return False
     return False
+
+def comprobar_estado_recurso(recurso:Recurso, consulta:bool = False) -> str:
+    if not consulta:
+        if isinstance(recurso, Libro):
+            ejemplar_disponible = False
+            ejemplar_en_consulta = False
+            for ejemplar in biblioteca.libros[recurso]:
+                if ejemplar.estado_accion == "" and ejemplar_disponible == False:
+                    ejemplar_disponible = True
+                elif ejemplar.estado_accion == "Consulta":
+                    ejemplar_en_consulta = True
+                elif ejemplar.estado_accion == "" and (ejemplar_disponible == True or ejemplar_en_consulta == True):
+                    return ejemplar
+            else:
+                return None
+        elif isinstance(recurso, Pelicula):
+            for ejemplar in biblioteca.peliculas[recurso]:
+                if isinstance(ejemplar, PeliculaPrestamo):
+                    if ejemplar.estado_prestamo:
+                        return None
+                    else:
+                        return ejemplar
+                
+    else:
+        if isinstance(recurso, Libro):
+            for ejemplar in biblioteca.libros[recurso]:
+                if ejemplar.estado_accion == "":
+                    return ejemplar
+            else:
+                return None
+        elif isinstance(recurso, Revista):
+            if recurso.estado_consulta:
+                return None
+            else:
+                return recurso
+        elif isinstance(recurso, Pelicula):
+            for ejemplar in biblioteca.peliculas[recurso]:
+                if isinstance(ejemplar, PeliculaBiblioteca):
+                    if ejemplar.estado_local:
+                        return None
+                    else:
+                        return ejemplar
+            else:
+                return None
 
 
 def test1():
