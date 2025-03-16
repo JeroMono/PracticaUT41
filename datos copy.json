@@ -10,22 +10,46 @@
             },
             [
                 {
-                    "libro": "L1",
+                    "libro": {
+                        "id": "L1",
+                        "descripcion": "Libro de prueba",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO",
+                        "editorial": "Editorial"
+                    },
                     "nro_ejemplar": 1,
                     "estado_accion": ""
                 },
                 {
-                    "libro": "L1",
+                    "libro": {
+                        "id": "L1",
+                        "descripcion": "Libro de prueba",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO",
+                        "editorial": "Editorial"
+                    },
                     "nro_ejemplar": 2,
-                    "estado_accion": ""
+                    "estado_accion": "Prestamo"
                 },
                 {
-                    "libro": "L1",
+                    "libro": {
+                        "id": "L1",
+                        "descripcion": "Libro de prueba",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO",
+                        "editorial": "Editorial"
+                    },
                     "nro_ejemplar": 3,
                     "estado_accion": ""
                 },
                 {
-                    "libro": "L1",
+                    "libro": {
+                        "id": "L1",
+                        "descripcion": "Libro de prueba",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO",
+                        "editorial": "Editorial"
+                    },
                     "nro_ejemplar": 4,
                     "estado_accion": ""
                 }
@@ -41,14 +65,26 @@
             },
             [
                 {
-                    "libro": "L2",
+                    "libro": {
+                        "id": "L2",
+                        "descripcion": "Libro de prueba",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO2",
+                        "editorial": "Editorial"
+                    },
                     "nro_ejemplar": 1,
                     "estado_accion": ""
                 },
                 {
-                    "libro": "L2",
+                    "libro": {
+                        "id": "L2",
+                        "descripcion": "Libro de prueba",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO2",
+                        "editorial": "Editorial"
+                    },
                     "nro_ejemplar": 2,
-                    "estado_accion": ""
+                    "estado_accion": "Prestamo"
                 }
             ]
         ],
@@ -62,14 +98,26 @@
             },
             [
                 {
-                    "libro": "L3",
+                    "libro": {
+                        "id": "L3",
+                        "descripcion": "Libro de prueba",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO3",
+                        "editorial": "Editorial"
+                    },
                     "nro_ejemplar": 1,
                     "estado_accion": ""
                 },
                 {
-                    "libro": "L3",
+                    "libro": {
+                        "id": "L3",
+                        "descripcion": "Libro de prueba",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO3",
+                        "editorial": "Editorial"
+                    },
                     "nro_ejemplar": 2,
-                    "estado_accion": ""
+                    "estado_accion": "Prestamo"
                 }
             ]
         ],
@@ -83,12 +131,24 @@
             },
             [
                 {
-                    "libro": "L4",
+                    "libro": {
+                        "id": "L4",
+                        "descripcion": "Libro de prueba",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO",
+                        "editorial": "Santillana"
+                    },
                     "nro_ejemplar": 1,
                     "estado_accion": ""
                 },
                 {
-                    "libro": "L4",
+                    "libro": {
+                        "id": "L4",
+                        "descripcion": "Libro de prueba",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO",
+                        "editorial": "Santillana"
+                    },
                     "nro_ejemplar": 2,
                     "estado_accion": ""
                 }
@@ -96,14 +156,6 @@
         ]
     ],
     "revistas": [
-        {
-            "id": "R4",
-            "descripcion": "Descripci\u00f3n de la revista",
-            "nombre": "Revista2",
-            "fecha_publicacion": "2023-09",
-            "editorial": "Editorial",
-            "estado_consulta": false
-        },
         {
             "id": "R1",
             "descripcion": "Descripci\u00f3n de la revista",
@@ -113,18 +165,26 @@
             "estado_consulta": false
         },
         {
-            "id": "R3",
-            "descripcion": "Descripci\u00f3n de la revista",
-            "nombre": "Revista2",
-            "fecha_publicacion": "2023-10",
-            "editorial": "Editorial",
-            "estado_consulta": false
-        },
-        {
             "id": "R2",
             "descripcion": "Descripci\u00f3n de la revista",
             "nombre": "Revista1",
             "fecha_publicacion": "2023-11",
+            "editorial": "Editorial",
+            "estado_consulta": false
+        },
+        {
+            "id": "R4",
+            "descripcion": "Descripci\u00f3n de la revista",
+            "nombre": "Revista2",
+            "fecha_publicacion": "2023-09",
+            "editorial": "Editorial",
+            "estado_consulta": false
+        },
+        {
+            "id": "R3",
+            "descripcion": "Descripci\u00f3n de la revista",
+            "nombre": "Revista2",
+            "fecha_publicacion": "2023-10",
             "editorial": "Editorial",
             "estado_consulta": false
         }
@@ -144,11 +204,31 @@
             },
             [
                 {
-                    "pelicula": "P1",
+                    "pelicula": {
+                        "id": "P1",
+                        "descripcion": "Descripci\u00f3n de la pel\u00edcula",
+                        "titulo": "T\u00edtulo",
+                        "actores_principales": [
+                            "Actor1",
+                            "Actor2"
+                        ],
+                        "actores_secundarios": "Secundario1",
+                        "fecha_publicacion": "2023-10-01"
+                    },
                     "estado_local": false
                 },
                 {
-                    "pelicula": "P1",
+                    "pelicula": {
+                        "id": "P1",
+                        "descripcion": "Descripci\u00f3n de la pel\u00edcula",
+                        "titulo": "T\u00edtulo",
+                        "actores_principales": [
+                            "Actor1",
+                            "Actor2"
+                        ],
+                        "actores_secundarios": "Secundario1",
+                        "fecha_publicacion": "2023-10-01"
+                    },
                     "estado_prestamo": false
                 }
             ]
@@ -167,11 +247,31 @@
             },
             [
                 {
-                    "pelicula": "P2",
+                    "pelicula": {
+                        "id": "P2",
+                        "descripcion": "Descripci\u00f3n de la pel\u00edcula",
+                        "titulo": "T\u00edtulo2",
+                        "actores_principales": [
+                            "Actor1",
+                            "Actor2"
+                        ],
+                        "actores_secundarios": "Secundario1",
+                        "fecha_publicacion": "2023-10-01"
+                    },
                     "estado_local": false
                 },
                 {
-                    "pelicula": "P2",
+                    "pelicula": {
+                        "id": "P2",
+                        "descripcion": "Descripci\u00f3n de la pel\u00edcula",
+                        "titulo": "T\u00edtulo2",
+                        "actores_principales": [
+                            "Actor1",
+                            "Actor2"
+                        ],
+                        "actores_secundarios": "Secundario1",
+                        "fecha_publicacion": "2023-10-01"
+                    },
                     "estado_prestamo": false
                 }
             ]
@@ -190,11 +290,31 @@
             },
             [
                 {
-                    "pelicula": "P3",
+                    "pelicula": {
+                        "id": "P3",
+                        "descripcion": "Descripci\u00f3n de la pel\u00edcula",
+                        "titulo": "T\u00edtulo3",
+                        "actores_principales": [
+                            "Actor1",
+                            "Actor2"
+                        ],
+                        "actores_secundarios": "Secundario1",
+                        "fecha_publicacion": "2023-10-01"
+                    },
                     "estado_local": false
                 },
                 {
-                    "pelicula": "P3",
+                    "pelicula": {
+                        "id": "P3",
+                        "descripcion": "Descripci\u00f3n de la pel\u00edcula",
+                        "titulo": "T\u00edtulo3",
+                        "actores_principales": [
+                            "Actor1",
+                            "Actor2"
+                        ],
+                        "actores_secundarios": "Secundario1",
+                        "fecha_publicacion": "2023-10-01"
+                    },
                     "estado_prestamo": false
                 }
             ]
@@ -213,13 +333,93 @@
             },
             [
                 {
-                    "pelicula": "P4",
+                    "pelicula": {
+                        "id": "P4",
+                        "descripcion": "Descripci\u00f3n de la pel\u00edcula",
+                        "titulo": "T\u00edtulo4",
+                        "actores_principales": [
+                            "Actor1",
+                            "Actor2"
+                        ],
+                        "actores_secundarios": "Secundario1",
+                        "fecha_publicacion": "2023-10-01"
+                    },
                     "estado_local": false
                 }
             ]
         ]
     ],
-    "prestamos": [],
+    "prestamos": [
+        [
+            "PREST-0001",
+            {
+                "nif": "12345678Z",
+                "id_uso": "PREST-0001",
+                "id_recurso": {
+                    "libro": {
+                        "id": "L2",
+                        "descripcion": "Libro de prueba",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO2",
+                        "editorial": "Editorial"
+                    },
+                    "nro_ejemplar": 2,
+                    "estado_accion": "Prestamo"
+                },
+                "fecha_solicitud": "16/03/2025",
+                "hora_solicitud": "11:46:10",
+                "nro_socio": "3",
+                "fecha_max_devolucion": "23/03/2025",
+                "fecha_devuelto": null
+            }
+        ],
+        [
+            "PREST-0002",
+            {
+                "nif": "12345678Z",
+                "id_uso": "PREST-0002",
+                "id_recurso": {
+                    "libro": {
+                        "id": "L1",
+                        "descripcion": "Libro de prueba",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO",
+                        "editorial": "Editorial"
+                    },
+                    "nro_ejemplar": 2,
+                    "estado_accion": "Prestamo"
+                },
+                "fecha_solicitud": "16/03/2025",
+                "hora_solicitud": "12:06:42",
+                "nro_socio": "3",
+                "fecha_max_devolucion": "23/03/2025",
+                "fecha_devuelto": null
+            }
+        ],
+        [
+            "PREST-0003",
+            {
+                "nif": "12345678Z",
+                "id_uso": "PREST-0003",
+                "id_recurso": {
+                    "libro": {
+                        "id": "L3",
+                        "descripcion": "Libro de prueba",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO3",
+                        "editorial": "Editorial"
+                    },
+                    "nro_ejemplar": 2,
+                    "estado_accion": "Prestamo"
+                },
+                "fecha_solicitud": "16/03/2025",
+                "hora_solicitud": "12:11:19",
+                "nro_socio": "3",
+                "fecha_max_devolucion": "23/03/2025",
+                "fecha_devuelto": null
+            }
+        ]
+    ],
     "consultas": [],
     "socios": [
         [
@@ -231,35 +431,7 @@
                 "direccion": "Calle Falsa 123",
                 "nro_socio": "1",
                 "ejemplares_prestados": [],
-                "recursos_en_consulta": null,
-                "fecha_solicitud_consulta": null,
-                "hora_solicitud_consulta": null
-            }
-        ],
-        [
-            "87654321B",
-            {
-                "nif": "87654321B",
-                "nombre": "Ana Garc\u00eda",
-                "telefono": "987654321",
-                "direccion": "Calle Verdadera 456",
-                "nro_socio": "2",
-                "ejemplares_prestados": [],
-                "recursos_en_consulta": null,
-                "fecha_solicitud_consulta": null,
-                "hora_solicitud_consulta": null
-            }
-        ],
-        [
-            "12345678Z",
-            {
-                "nif": "12345678Z",
-                "nombre": "Pedro Mart\u00ednez",
-                "telefono": "123456789",
-                "direccion": "Calle Inventada 789",
-                "nro_socio": "3",
-                "ejemplares_prestados": [],
-                "recursos_en_consulta": null,
+                "recurso_en_consulta": null,
                 "fecha_solicitud_consulta": null,
                 "hora_solicitud_consulta": null
             }
@@ -273,35 +445,53 @@
                 "direccion": "Calle Imaginaria 012",
                 "nro_socio": "4",
                 "ejemplares_prestados": [],
-                "recursos_en_consulta": null,
+                "recurso_en_consulta": null,
                 "fecha_solicitud_consulta": null,
                 "hora_solicitud_consulta": null
             }
         ],
         [
-            "34567890Q",
+            "12345678Z",
             {
-                "nif": "34567890Q",
+                "nif": "12345678Z",
+                "nombre": "Pedro Mart\u00ednez",
+                "telefono": "123456789",
+                "direccion": "Calle Inventada 789",
+                "nro_socio": "3",
+                "ejemplares_prestados": [
+                    "PREST-0001",
+                    "PREST-0002",
+                    "PREST-0003"
+                ],
+                "recurso_en_consulta": null,
+                "fecha_solicitud_consulta": null,
+                "hora_solicitud_consulta": null
+            }
+        ],
+        [
+            "98765432M",
+            {
+                "nif": "98765432M",
                 "nombre": "Luis Fern\u00e1ndez",
                 "telefono": "234567890",
                 "direccion": "Calle Real 345",
                 "nro_socio": "5",
                 "ejemplares_prestados": [],
-                "recursos_en_consulta": null,
+                "recurso_en_consulta": null,
                 "fecha_solicitud_consulta": null,
                 "hora_solicitud_consulta": null
             }
         ],
         [
-            "56789012R",
+            "56789012B",
             {
-                "nif": "56789012R",
+                "nif": "56789012B",
                 "nombre": "Laura S\u00e1nchez",
                 "telefono": "345678901",
                 "direccion": "Calle So\u00f1ada 678",
                 "nro_socio": "6",
                 "ejemplares_prestados": [],
-                "recursos_en_consulta": null,
+                "recurso_en_consulta": null,
                 "fecha_solicitud_consulta": null,
                 "hora_solicitud_consulta": null
             }
@@ -309,9 +499,9 @@
     ],
     "ocasionales": [
         [
-            "23456789C",
+            "23456789D",
             {
-                "nif": "23456789C",
+                "nif": "23456789D",
                 "nombre": "Luis L\u00f3pez",
                 "telefono": "234567890",
                 "direccion": "Calle Real 789",
@@ -321,9 +511,9 @@
             }
         ],
         [
-            "34567890D",
+            "34567890V",
             {
-                "nif": "34567890D",
+                "nif": "34567890V",
                 "nombre": "Mar\u00eda Fern\u00e1ndez",
                 "telefono": "345678901",
                 "direccion": "Calle Imaginaria 012",
@@ -333,10 +523,10 @@
             }
         ]
     ],
-    "nro_prestamo": 0,
+    "nro_prestamo": 3,
     "nro_id_libro": 4,
     "nro_id_revista": 4,
     "nro_id_pelicula": 4,
-    "nro_socio": 0,
+    "nro_socio": 6,
     "nro_consulta": 0
 }

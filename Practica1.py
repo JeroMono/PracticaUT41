@@ -67,7 +67,7 @@ class Usuario:
 class Socio(Usuario):
     nro_socio: str
     ejemplares_prestados: list = field(default_factory=list)
-    recursos_en_consulta: any = None
+    recurso_en_consulta: any = None
     fecha_solicitud_consulta: any = None
     hora_solicitud_consulta: any = None
 
@@ -142,10 +142,7 @@ class Biblioteca:
         self.ocasionales.append(ocasional)
 
     def buscar_ocasional(self, nif):
-        for ocasional in self.ocasionales:
-            if ocasional.nif == nif:
-                return ocasional
-        return None
+        return self.ocasionales.get(nif)
 
     def generar_id_recurso(self, tipo):
         if tipo == "libro":
@@ -429,14 +426,24 @@ def mostrar_menu_prestamo_consulta():
                 return
         ejemplar = comprobar_estado_recurso(recurso_prestamo)
         if ejemplar:
-            ejemplar.estado_accion = "Prestamo"
-            id_prestamo = biblioteca.generar_nro_prestamo()
             if isinstance(recurso_prestamo, Libro):
+                for recurso in socio.ejemplares_prestados:
+                    tipo = biblioteca.prestamos[recurso].id_recurso.get("libro", None)
+                    if tipo:
+                        libro = Libro(**biblioteca.prestamos[recurso].id_recurso["libro"])
+                        if libro == recurso_prestamo:
+                            print("El socio ya tiene el libro en préstamo.")
+                            presionar_intro()
+                            return
                 print(f"El libro '{recurso_prestamo.titulo}' ha sido prestado a {socio.nombre}.")
-                recurso_prestamo = (recurso_prestamo.__dict__['titulo'], ejemplar.__dict__['nro_ejemplar'])
+                ejemplar.estado_accion = "Prestamo"
+                recurso_prestamo = ejemplar.__dict__
             elif isinstance(recurso_prestamo, Pelicula):
                 print(f"La película '{recurso_prestamo.titulo}' ha sido prestada a {socio.nombre}.")
-                recurso_prestamo = recurso_prestamo.id
+                recurso_prestamo = recurso_prestamo.__dict__
+                ejemplar.estado_prestamo = True
+                
+            id_prestamo = biblioteca.generar_nro_prestamo()
             prestamo = Prestamo(socio.nif, id_prestamo, recurso_prestamo, datetime.now().strftime("%d/%m/%Y"), datetime.now().strftime("%H:%M:%S"), socio.nro_socio, (datetime.now() + timedelta(days=7)).strftime("%d/%m/%Y"))
             biblioteca.prestamos[id_prestamo] = prestamo
             socio.ejemplares_prestados.append(id_prestamo)
@@ -460,7 +467,7 @@ def mostrar_menu_prestamo_consulta():
         usuario = biblioteca.buscar_socio_nif(nif)
         if usuario:
             print("La persona es un socio.")
-            if usuario.recursos_en_consulta:
+            if usuario.recurso_en_consulta:
                 print(f"El usuario {usuario.nombre} ya tiene un recurso en consulta.")
                 return
         else:
@@ -522,23 +529,23 @@ def mostrar_menu_prestamo_consulta():
                     id_consulta = biblioteca.generar_nro_consulta()
 
                     if isinstance(ejemplar, EjemplarLibro):
-                        ejemplar.estado_accion = "Consulta "
+                        ejemplar.estado_accion = "Consulta"
                         print(f"El libro '{recurso_consulta.titulo}' ha sido registrado para consulta.")
-                        recurso_consulta = (recurso_consulta.__dict__['titulo'], ejemplar.__dict__['nro_ejemplar'])
+                        recurso_consulta = ejemplar.__dict__['nro_ejemplar']
                     
                     elif isinstance(ejemplar, Revista):
                         ejemplar.estado_consulta = True
                         print(f"La revista '{ejemplar.nombre}' ha sido registrada para consulta.")
-                        recurso_consulta = ejemplar.id
+                        recurso_consulta = ejemplar.__dict__
                     
                     elif isinstance(ejemplar, PeliculaBiblioteca):
                         ejemplar.estado_local = True
-                        recurso_consulta = recurso_consulta.id
-                        print(f"La película '{recurso_consulta.titulo}' ha sido registrada para consulta.")
+                        recurso_consulta = recurso_consulta.__dict__
+                        print(f"La película '{ejemplar.__dict__['pelicula']['titulo']}' ha sido registrada para consulta.")
 
                     consulta = generar_consulta(usuario.nif, id_consulta, recurso_consulta)
                     biblioteca.consultas[id_consulta] = consulta
-                    usuario.recursos_en_consulta = id_consulta
+                    usuario.recurso_en_consulta = id_consulta
                     usuario.fecha_solicitud_consulta = datetime.now().strftime("%d/%m/%Y")
                     usuario.hora_solicitud_consulta = datetime.now().strftime("%H:%M:%S")
 
@@ -565,17 +572,17 @@ def mostrar_menu_devolver():
     usuario = biblioteca.buscar_socio_nif(nif)
     if usuario:
         print("La persona es un socio.")
-        if not usuario.ejemplares_prestados and not usuario.recursos_en_consulta:
+        if not usuario.ejemplares_prestados and not usuario.recurso_en_consulta:
             print("El socio no tiene ejemplares prestados ni recursos en consulta.")
             return
         while True:
             recurso_numero = 1
-            print(f"El socio {usuario.nombre} tiene {len(usuario.ejemplares_prestados)} ejemplares prestados y {len(usuario.recursos_en_consulta)} recursos en consulta.")
+            print(f"El socio {usuario.nombre} tiene {len(usuario.ejemplares_prestados)} ejemplares prestados y {(1 if usuario.recurso_en_consulta else 0)} recursos en consulta.")
             for prestamo in usuario.ejemplares_prestados:
                 print(f"{recurso_numero}. {prestamo}")
                 recurso_numero += 1
-            for consulta in usuario.recursos_en_consulta:
-                print(f"{recurso_numero}. {consulta}")
+            if usuario.recurso_en_consulta:
+                print(f"{recurso_numero}. {usuario.recurso_en_consulta}")
                 recurso_numero += 1
             print("0. Volver")
             try:
@@ -586,11 +593,21 @@ def mostrar_menu_devolver():
             if recurso.upper() == "T":
                 for prestamo in usuario.ejemplares_prestados:
                     biblioteca.prestamos[prestamo].fecha_devuelto = datetime.now().strftime("%d/%m/%Y")
+                    if isinstance(prestamo, EjemplarLibro):
+                        biblioteca.libros[prestamo.libro][biblioteca.libros[prestamo.libro].index(prestamo)].estado_accion = ""
+                    elif isinstance(prestamo, PeliculaPrestamo):
+                        biblioteca.peliculas[prestamo.pelicula][1].estado_prestamo = False
                     print(f"El recurso {prestamo} ha sido devuelto.")
                 usuario.ejemplares_prestados = []
-                biblioteca.consultas[usuario.recursos_en_consulta].hora_devolucion = datetime.now().strftime("%H:%M:%S")
-                print(f"El recurso {usuario.recursos_en_consulta} ha sido devuelto.")
-                usuario.recursos_en_consulta = None
+                biblioteca.consultas[usuario.recurso_en_consulta].hora_devolucion = datetime.now().strftime("%H:%M:%S")
+                if isinstance(usuario.recurso_en_consulta, Revista):
+                    biblioteca.revistas[usuario.recurso_en_consulta].estado_consulta = False
+                elif isinstance(usuario.recurso_en_consulta, PeliculaBiblioteca):
+                    biblioteca.peliculas[usuario.recurso_en_consulta][0].estado_local = False
+                elif isinstance(usuario.recurso_en_consulta, EjemplarLibro):
+                    biblioteca.libros[usuario.recurso_en_consulta.libro][biblioteca.libros[usuario.recurso_en_consulta.libro].index(usuario.recurso_en_consulta)].estado_accion = ""
+                print(f"El recurso {usuario.recurso_en_consulta} ha sido devuelto.")
+                usuario.recurso_en_consulta = None
                 biblioteca.guardar_datos()
                 print("Todos los recursos han sido devueltos.")
                 return
@@ -599,21 +616,58 @@ def mostrar_menu_devolver():
                 return
             try:
                 recurso = int(recurso) - 1
-                if recurso < 0 or recurso >= len(usuario.ejemplares_prestados) + len(usuario.recursos_en_consulta):
+                if recurso < 0 or recurso >= len(usuario.ejemplares_prestados) + (1 if usuario.recurso_en_consulta else 0):
                     raise ValueError
             except ValueError:
                 print("Número inválido.")
                 continue
             if recurso < len(usuario.ejemplares_prestados):
                 prestamo = usuario.ejemplares_prestados[recurso]
-                biblioteca.prestamos[prestamo].fecha_devuelto = datetime.now().strftime("%d/%m/%Y")
-                usuario.ejemplares_prestados.remove(prestamo)
+                recurso_prestamo = biblioteca.prestamos[prestamo].id_recurso
+                tipo = recurso_prestamo.get("libro", "id")
+                if tipo  != "id":
+                    libro = Libro(**recurso_prestamo["libro"])
+                    ejemplar = EjemplarLibro(**recurso_prestamo)
+                    biblioteca.libros[libro][biblioteca.libros[libro].index(ejemplar)].estado_accion = ""
+                    biblioteca.prestamos[prestamo].fecha_devuelto = datetime.now().strftime("%d/%m/%Y")
+                    usuario.ejemplares_prestados.remove(prestamo)
+                    print(f"El recurso {prestamo} ha sido devuelto.")
+
+                else:
+                    pelicula = Pelicula(**recurso_prestamo)
+                    biblioteca.peliculas[pelicula][1].estado_prestamo = False
+                    biblioteca.prestamos[prestamo].fecha_devuelto = datetime.now().strftime("%d/%m/%Y")
+                    usuario.ejemplares_prestados.remove(prestamo)
+                    print(f"El recurso {prestamo} ha sido devuelto.")
+                if biblioteca.prestamos[prestamo].fecha_max_devolucion < biblioteca.prestamos[prestamo].fecha_devuelto:
+                    print(f"El recurso {prestamo} ha sido devuelto fuera de plazo.")
+                else:
+                    print(f"El recurso {prestamo} ha sido devuelto a tiempo.")
                 biblioteca.guardar_datos()
-                print(f"El recurso {prestamo} ha sido devuelto.")
-            elif recurso < len(usuario.ejemplares_prestados) + len(usuario.recursos_en_consulta):
-                consulta = usuario.recursos_en_consulta
+
+            elif recurso < len(usuario.ejemplares_prestados) + (1 if usuario.recurso_en_consulta else 0):
+                consulta = usuario.recurso_en_consulta
+                recurso_consulta = biblioteca.consultas[consulta]
+                input(recurso_consulta)
+                tipo = recurso_consulta.id_recurso.get("libro", "id")
+                if tipo != "id":
+                    libro = Libro(**recurso_consulta.id_recurso["libro"])
+                    ejemplar = EjemplarLibro(**recurso_consulta.id_recurso)
+                    biblioteca.libros[libro][biblioteca.libros[libro].index(ejemplar)].estado_accion = ""
+                
+                elif recurso_consulta.id_recurso[0] == "R":
+                    for revista in biblioteca.revistas:
+                        if revista.id == recurso_consulta.id_recurso:
+                            revista.estado_consulta = False
+                            break
+
+                else:
+                    pelicula = Pelicula(**recurso_consulta)
+                    biblioteca.peliculas[pelicula][1].estado_prestamo = False
+                
                 biblioteca.consultas[consulta].hora_devolucion = datetime.now().strftime("%H:%M:%S")
-                usuario.recursos_en_consulta = None
+                
+                usuario.recurso_en_consulta = None
                 biblioteca.guardar_datos()
                 print(f"El recurso {consulta} ha sido devuelto.")
                 
@@ -625,6 +679,9 @@ def mostrar_menu_devolver():
             if not usuario.recurso_en_consulta:
                 print("El usuario ocasional no tiene recursos en consulta.")
                 return
+            eliminar_consulta(usuario)
+
+            
         else:
             print("La persona no está registrada en la biblioteca. No tiene recursos en su poder.")
             return
@@ -702,7 +759,7 @@ def mostrar_menu_añadir_socio():
             continue
 
     nro_socio = biblioteca.generar_nro_socio()
-    nuevo_socio = Socio(nro_socio, nif, nombre, telefono, direccion)
+    nuevo_socio = Socio(nif, nombre, telefono, direccion, nro_socio)
     biblioteca.agregar_socio(nuevo_socio)
     print(f"El socio {nombre} ha sido registrado con el número de socio {nro_socio}.")
     biblioteca.guardar_datos()
@@ -751,7 +808,7 @@ def configurar_libro():
                     except KeyboardInterrupt:
                         print("\nVolviendo al menú de recursos")
                     for unidad in range(1, ejemplares + 1):
-                        biblioteca.ejemplares[libro].append(EjemplarLibro(libro, biblioteca.ejemplares[libro][-1].__dict__['nro_ejemplar'] + 1))
+                        biblioteca.ejemplares[libro].append(EjemplarLibro(libro.__dict__, biblioteca.ejemplares[libro][-1].__dict__['nro_ejemplar'] + 1))
                     print(f"Se han añadido {ejemplares} ejemplares del libro '{titulo}'.")
                     return
             elif opcion == "2":
@@ -786,7 +843,7 @@ def configurar_libro():
         libro = Libro(id_libro, descripcion, autor, titulo, editorial)
         biblioteca.ejemplares[libro] = []
         for unidad in range(1, ejemplares + 1):
-            biblioteca.ejemplares[libro].append(EjemplarLibro(libro, unidad))
+            biblioteca.ejemplares[libro].append(EjemplarLibro(libro.__dict__, unidad))
         print(f"Se ha añadido el libro '{titulo}' de {autor} a la biblioteca.")
         biblioteca.guardar_datos()
         print(f"Se han añadido {ejemplares} ejemplares del libro '{titulo}'.")
@@ -873,6 +930,15 @@ def configurar_pelicula():
     else:
         while True:
             try:
+                descripcion = input("Introduce la descripción del libro: ")
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de recursos")
+                return
+            if descripcion:
+                break
+            print("La descripción no puede estar vacía.")
+        while True:
+            try:
                 ejemplares = int(input("¿Cuántos ejemplares desea añadir? "))
                 if ejemplares <= 0 or ejemplares > 2:
                     raise ValueError
@@ -883,9 +949,13 @@ def configurar_pelicula():
                 print("\nVolviendo al menú de recursos")
             break
         id_pelicula = biblioteca.generar_id_recurso("pelicula")
-        pelicula = Pelicula(id_pelicula, "Descripción de la película", ejemplares, titulo, actores_principales, actores_secundarios, fecha_publicacion, True)
-        biblioteca.peliculas.append(pelicula)
-        print(f"Se ha añadido la película '{titulo}' a la biblioteca.")
+        pelicula = Pelicula(id_pelicula, descripcion, ejemplares, titulo, actores_principales, actores_secundarios, fecha_publicacion, True)
+        if ejemplares == 1:
+            biblioteca.peliculas[pelicula] = [PeliculaBiblioteca(pelicula.__dict__, False)]
+            print(f"Se ha añadido 1 ejemplar de la película '{titulo}' a la biblioteca para consulta.")
+        else:
+            biblioteca.peliculas[pelicula] = [PeliculaBiblioteca(pelicula.__dict__, False), PeliculaPrestamo(pelicula.__dict__, False)]
+            print(f"Se ha añadido 2 ejemplates de la película '{titulo}' a la biblioteca para consulta y préstamo.")
         biblioteca.guardar_datos()
 
 def encontrar_recurso(LIBRO:bool = False, REVISTA:bool = False, PELICULA:bool = False):
@@ -1135,6 +1205,35 @@ def encontrar_recurso(LIBRO:bool = False, REVISTA:bool = False, PELICULA:bool = 
         else:
             print(f"No se encontró ninguna película con el título '{titulo}' y fecha de publicación {fecha_publicacion}.")
         return None
+    
+def eliminar_consulta(usuario:Usuario):
+    consulta = usuario.recurso_en_consulta
+    recurso_consulta = biblioteca.consultas[consulta]
+    input(recurso_consulta)
+    tipo = recurso_consulta.id_recurso.get("libro",None)
+    if tipo:
+        libro = Libro(**recurso_consulta.id_recurso["libro"])
+        ejemplar = EjemplarLibro(**recurso_consulta.id_recurso)
+        biblioteca.libros[libro][biblioteca.libros[libro].index(ejemplar)].estado_accion = ""
+    else:
+        if recurso_consulta.id_recurso["id"][0] == "R":
+            for revista in biblioteca.revistas:
+                input(f"revista-id {revista.id} recurso-consulta {recurso_consulta.id_recurso}")
+                if revista.id == recurso_consulta.id_recurso["id"]:
+                    revista.estado_consulta = False
+                    break
+
+        else:
+            pelicula = Pelicula(**recurso_consulta.id_recurso)
+            biblioteca.peliculas[pelicula][0].estado_local = False
+    
+    biblioteca.consultas[consulta].hora_devolucion = datetime.now().strftime("%H:%M:%S")
+    
+    usuario.recurso_en_consulta = None
+    usuario.fecha_solicitud_consulta = None
+    usuario.hora_solicitud_consulta = None
+    biblioteca.guardar_datos()
+    print(f"El recurso {consulta} ha sido devuelto.")
         
 
 def buscar_libro(titulo:str, autor:str, editorial:str) -> Recurso:
@@ -1250,6 +1349,12 @@ def comprobar_estado_recurso(recurso:Recurso, consulta:bool = False) -> str:
             else:
                 return None
 
+def presionar_intro():
+    """Función para pausar la ejecución del programa hasta que el usuario presione Enter"""
+    try:
+        input("Presiona Enter para continuar...")
+    except KeyboardInterrupt:
+        pass
 
 def test1():
     libro1 = Libro("L1", "Libro de prueba", "Autor", "LIBRAZO", "Editorial")
@@ -1268,14 +1373,14 @@ def test1():
     # biblioteca.ejemplares[libro1] = [EjemplarLibro(libro1.id, 1, ''), EjemplarLibro(libro1.id, 2,'')]
     # biblioteca.ejemplares[pelicula1] = [PeliculaBiblioteca(pelicula1.id, False), PeliculaPrestamo(pelicula1.id, False)]
     # biblioteca.ejemplares[revista1] = revista1
-    biblioteca.libros[libro1] = [EjemplarLibro(libro1.id, 1, ''), EjemplarLibro(libro1.id, 2,'')]
-    biblioteca.libros[libro2] = [EjemplarLibro(libro2.id, 1, ''), EjemplarLibro(libro2.id, 2,'')]
-    biblioteca.libros[libro3] = [EjemplarLibro(libro3.id, 1, ''), EjemplarLibro(libro3.id, 2,'')]
-    biblioteca.libros[libro4] = [EjemplarLibro(libro4.id, 1, ''), EjemplarLibro(libro4.id, 2,'')]
-    biblioteca.peliculas[pelicula1] = [PeliculaBiblioteca(pelicula1.id, False), PeliculaPrestamo(pelicula1.id, False)]
-    biblioteca.peliculas[pelicula2] = [PeliculaBiblioteca(pelicula2.id, False), PeliculaPrestamo(pelicula2.id, False)]
-    biblioteca.peliculas[pelicula3] = [PeliculaBiblioteca(pelicula3.id, False), PeliculaPrestamo(pelicula3.id, False)]
-    biblioteca.peliculas[pelicula4] = [PeliculaBiblioteca(pelicula4.id, False)]
+    biblioteca.libros[libro1] = [EjemplarLibro(libro1.__dict__, 1, ''), EjemplarLibro(libro1.__dict__, 2,'')]
+    biblioteca.libros[libro2] = [EjemplarLibro(libro2.__dict__, 1, ''), EjemplarLibro(libro2.__dict__, 2,'')]
+    biblioteca.libros[libro3] = [EjemplarLibro(libro3.__dict__, 1, ''), EjemplarLibro(libro3.__dict__, 2,'')]
+    biblioteca.libros[libro4] = [EjemplarLibro(libro4.__dict__, 1, ''), EjemplarLibro(libro4.__dict__, 2,'')]
+    biblioteca.peliculas[pelicula1] = [PeliculaBiblioteca(pelicula1.__dict__, False), PeliculaPrestamo(pelicula1.__dict__, False)]
+    biblioteca.peliculas[pelicula2] = [PeliculaBiblioteca(pelicula2.__dict__, False), PeliculaPrestamo(pelicula2.__dict__, False)]
+    biblioteca.peliculas[pelicula3] = [PeliculaBiblioteca(pelicula3.__dict__, False), PeliculaPrestamo(pelicula3.__dict__, False)]
+    biblioteca.peliculas[pelicula4] = [PeliculaBiblioteca(pelicula4.__dict__, False)]
     biblioteca.revistas.add(revista11)
     biblioteca.revistas.add(revista12)
     biblioteca.revistas.add(revista21)
@@ -1304,11 +1409,11 @@ def test1():
     print("Aumentando el número de ejemplares")
     ultimo_indice = biblioteca.libros[libro1][-1].__dict__['nro_ejemplar']
     print(ultimo_indice)	
-    biblioteca.libros[libro1].append(EjemplarLibro(libro1.id, ultimo_indice + 1,''))
+    biblioteca.libros[libro1].append(EjemplarLibro(libro1.__dict__, ultimo_indice + 1,''))
     print(biblioteca.libros[libro1])
     ultimo_indice = len(biblioteca.libros[libro1])
     print(ultimo_indice)	
-    biblioteca.libros[libro1].append(EjemplarLibro(libro1.id, ultimo_indice + 1,''))
+    biblioteca.libros[libro1].append(EjemplarLibro(libro1.__dict__, ultimo_indice + 1,''))
     print(biblioteca.libros[libro1])
 
 
@@ -1325,24 +1430,26 @@ def test1():
     #print(biblioteca.ejemplares.keys())
 
     usuario1 = Socio("43491650F", "Juan Pérez", "123456789", "Calle Falsa 123", "1")
-    usuario2 = Socio("87654321B", "Ana García", "987654321", "Calle Verdadera 456","2")
+    usuario2 = Socio("87654321X", "Ana García", "987654321", "Calle Verdadera 456","2")
     usuario3 = Socio("12345678Z", "Pedro Martínez", "123456789", "Calle Inventada 789","3")
     usuario4 = Socio("87654321X", "María López", "987654321", "Calle Imaginaria 012","4")
-    usuario5 = Socio("34567890Q", "Luis Fernández", "234567890", "Calle Real 345","5")
-    usuario6 = Socio("56789012R", "Laura Sánchez", "345678901", "Calle Soñada 678","6")
+    usuario5 = Socio("98765432M", "Luis Fernández", "234567890", "Calle Real 345","5")
+    usuario6 = Socio("56789012B", "Laura Sánchez", "345678901", "Calle Soñada 678","6")
+
+    biblioteca.nro_socio = 6
 
     biblioteca.socios["43491650F"] = usuario1
-    biblioteca.socios["87654321B"] = usuario2
+    biblioteca.socios["87654321X"] = usuario2
     biblioteca.socios["12345678Z"] = usuario3
     biblioteca.socios["87654321X"] = usuario4
-    biblioteca.socios["34567890Q"] = usuario5
-    biblioteca.socios["56789012R"] = usuario6
+    biblioteca.socios["98765432M"] = usuario5
+    biblioteca.socios["56789012B"] = usuario6
     print(biblioteca.socios)
 
-    ocasional1 = Ocasional("23456789C", "Luis López", "234567890", "Calle Real 789")
-    ocasional2 = Ocasional("34567890D", "María Fernández", "345678901", "Calle Imaginaria 012")
-    biblioteca.ocasionales["23456789C"] = ocasional1
-    biblioteca.ocasionales["34567890D"] = ocasional2
+    ocasional1 = Ocasional("23456789D", "Luis López", "234567890", "Calle Real 789")
+    ocasional2 = Ocasional("34567890V", "María Fernández", "345678901", "Calle Imaginaria 012")
+    biblioteca.ocasionales["23456789D"] = ocasional1
+    biblioteca.ocasionales["34567890V"] = ocasional2
     print(biblioteca.ocasionales)
     
     biblioteca.guardar_datos()
