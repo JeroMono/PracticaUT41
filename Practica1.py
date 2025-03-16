@@ -130,6 +130,9 @@ class Biblioteca:
     def agregar_socio(self, socio):
         self.socios[socio.nif] = socio
 
+    def eliminar_socio(self, nif):
+        del self.socios[nif]
+
     def buscar_socio_nif(self, nif) -> Socio | None:
         return self.socios.get(nif)
     
@@ -858,7 +861,7 @@ def mostrar_menu_devolver():
                     ejemplar = EjemplarLibro(**recurso_consulta.id_recurso)
                     biblioteca.libros[libro][biblioteca.libros[libro].index(ejemplar)].estado_accion = ""
                 
-                elif recurso_consulta.id_recurso[0] == "R":
+                elif recurso_consulta.id_recurso["id"][0] == "R":
                     for revista in biblioteca.revistas:
                         if revista.id == recurso_consulta.id_recurso:
                             revista.estado_consulta = False
@@ -1034,10 +1037,177 @@ def mostrar_menu_añadir_socio():
     
 
 def mostrar_menu_eliminar_socio():
-    pass
+    while True:
+        try:
+            opcion = input("Buscar socio por NIF o Número de socio (N/S): ").upper()
+        except KeyboardInterrupt:
+            print("\nVolviendo al menú de Usuarios")
+            return
+        if opcion in ["N", "NIF","DNI","NIE"]:
+            opcion = "NIF"
+            break
+        elif opcion in ["S", "NUMERO", "NRO_SOCIO","SOCIO"]:
+            opcion = "NUMERO"
+            break
+        else:
+            print("Opción inválida.")
+            continue
+
+    if opcion == "NIF":
+        while True:
+            try:
+                nif = input("Introduce el NIF/NIE del socio: ")
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de Usuarios")
+                return
+            if comprobar_dni(nif):
+                break
+            else:
+                print("El NIF, NIE introducido no es válido.")
+                continue
+        socio = biblioteca.buscar_socio_nif(nif)
+    elif opcion == "NUMERO":
+        while True:
+            try:
+                nro_socio = input("Introduce el número de socio (numero o S[numero]): ").upper()
+                if nro_socio[0] == "S" and nro_socio[1:].isdigit():
+                    nro_socio = nro_socio[1:]
+                elif nro_socio.isdigit():
+                    nro_socio = nro_socio
+                nro_socio = int(nro_socio)
+                nro_socio = f"S{nro_socio:010d}"
+            except TypeError:
+                print("El número de socio no es válido.")
+            except ValueError:
+                print("El número de socio debe ser un número, puede empezar con S.")
+                continue
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de Usuarios")
+                return
+            socio = biblioteca.buscar_socio_nro_socio(nro_socio)
+            if socio:
+                break
+            else:
+                print("El número de socio no existe.")
+                continue
+    if socio:
+        if socio.ejemplares_prestados or socio.recurso_en_consulta:
+            print(f"El socio {socio.nombre} tiene {len(socio.ejemplares_prestados)} ejemplares prestados y {(1 if socio.recurso_en_consulta else 0)} recursos en consulta.")
+            print("No se puede eliminar el socio porque tiene ejemplares prestados o recursos en consulta.")
+            return
+        while True:
+            try:
+                opcion = input("¿Deseas eliminar el socio? (S/N): ").upper()
+            except KeyboardInterrupt:
+                opcion = "N"
+            if opcion == "S":
+                biblioteca.eliminar_socio(socio.nif)
+                biblioteca.guardar_datos()
+                print(f"El socio {socio.nombre} ha sido eliminado.")
+                return
+            elif opcion == "N":
+                print("El socio no ha sido eliminado.")
+                return
+            else:
+                print("Opción inválida.")
+                continue
 
 def mostrar_menu_consultar_libros_en_prestamo():
-    pass
+    while True:
+        try:
+            opcion = input("Buscar socio por NIF o Número de socio (N/S): ").upper()
+        except KeyboardInterrupt:
+            print("\nVolviendo al menú de Usuarios")
+            return
+        if opcion in ["N", "NIF","DNI","NIE"]:
+            opcion = "NIF"
+            break
+        elif opcion in ["S", "NUMERO", "NRO_SOCIO","SOCIO"]:
+            opcion = "NUMERO"
+            break
+        else:
+            print("Opción inválida.")
+            continue
+
+    if opcion == "NIF":
+        while True:
+            try:
+                nif = input("Introduce el NIF/NIE del socio: ")
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de Usuarios")
+                return
+            if comprobar_dni(nif):
+                break
+            else:
+                print("El NIF, NIE introducido no es válido.")
+                continue
+        socio = biblioteca.buscar_socio_nif(nif)
+    elif opcion == "NUMERO":
+        while True:
+            try:
+                nro_socio = input("Introduce el número de socio (numero o S[numero]): ").upper()
+                if nro_socio[0] == "S" and nro_socio[1:].isdigit():
+                    nro_socio = nro_socio[1:]
+                elif nro_socio.isdigit():
+                    nro_socio = nro_socio
+                nro_socio = int(nro_socio)
+                nro_socio = f"S{nro_socio:010d}"
+            except TypeError:
+                print("El número de socio no es válido.")
+            except ValueError:
+                print("El número de socio debe ser un número, puede empezar con S.")
+                continue
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de Usuarios")
+                return
+            socio = biblioteca.buscar_socio_nro_socio(nro_socio)
+            if socio:
+                break
+            else:
+                print("El número de socio no existe.")
+                continue
+    if socio:
+        print(f"El socio {socio.nombre} tiene {len(socio.ejemplares_prestados)} ejemplares prestados y {(1 if socio.recurso_en_consulta else 0)} recursos en consulta.")
+        if not socio.ejemplares_prestados:
+            print("El socio no tiene ejemplares prestados.")
+            return
+        else:
+            print("Ejemplares tiene en préstamo:")
+            for prestamo in socio.ejemplares_prestados:
+                recurso = biblioteca.prestamos[prestamo].id_recurso
+                tipo = recurso.get("libro", None)
+                if tipo:
+                    libro = Libro(**recurso["libro"])
+                    ejemplar = EjemplarLibro(**recurso)
+                    print(f"  Libro: {libro.titulo} ({libro.autor}) -> Ejemplar Nº: {ejemplar.nro_ejemplar}")
+                else:
+                    pelicula = Pelicula(**recurso)
+                    print(f"  Pelicula: {pelicula.titulo} ({pelicula.fecha_publicacion})")
+                print(f"\tFecha de préstamo: {biblioteca.prestamos[prestamo].fecha_solicitud}")
+                print(f"\tHora de préstamo: {biblioteca.prestamos[prestamo].hora_solicitud}")
+                print(f"\tFecha de devolución: {biblioteca.prestamos[prestamo].fecha_max_devolucion}")
+        if socio.recurso_en_consulta:
+            print("Recurso en consulta:")
+            consulta = socio.recurso_en_consulta
+            recurso_consulta = biblioteca.consultas[consulta]
+            tipo = recurso_consulta.id_recurso.get("libro", None)
+            if tipo:
+                libro = Libro(**recurso_consulta.id_recurso["libro"])
+                ejemplar = EjemplarLibro(**recurso_consulta.id_recurso)
+                print(f"  Libro: {libro.titulo} ({libro.autor}) -> Ejemplar Nº: {ejemplar.nro_ejemplar}")
+            elif recurso_consulta.id_recurso["id"][0] == "R":
+                revista = Revista(**recurso_consulta.id_recurso)
+                print(f"  Revista: {revista.nombre} ({revista.fecha_publicacion})")
+            else:
+                pelicula = Pelicula(**recurso_consulta.id_recurso)
+                print(f"  Pelicula: {pelicula.titulo} ({pelicula.fecha_publicacion})")
+            print(f"\tFecha de consulta: {biblioteca.consultas[consulta].fecha_solicitud}")
+            print(f"\tHora de consulta: {biblioteca.consultas[consulta].hora_solicitud}")
+        
+    else:
+        print("El socio no existe.")
+
+
 
 def configurar_libro():
     try:

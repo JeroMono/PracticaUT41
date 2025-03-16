@@ -157,18 +157,10 @@
     ],
     "revistas": [
         {
-            "id": "R1",
+            "id": "R3",
             "descripcion": "Descripci\u00f3n de la revista",
-            "nombre": "Revista1",
+            "nombre": "Revista2",
             "fecha_publicacion": "2023-10",
-            "editorial": "Editorial",
-            "estado_consulta": false
-        },
-        {
-            "id": "R2",
-            "descripcion": "Descripci\u00f3n de la revista",
-            "nombre": "Revista1",
-            "fecha_publicacion": "2023-11",
             "editorial": "Editorial",
             "estado_consulta": false
         },
@@ -181,10 +173,18 @@
             "estado_consulta": false
         },
         {
-            "id": "R3",
+            "id": "R1",
             "descripcion": "Descripci\u00f3n de la revista",
-            "nombre": "Revista2",
+            "nombre": "Revista1",
             "fecha_publicacion": "2023-10",
+            "editorial": "Editorial",
+            "estado_consulta": false
+        },
+        {
+            "id": "R2",
+            "descripcion": "Descripci\u00f3n de la revista",
+            "nombre": "Revista1",
+            "fecha_publicacion": "2023-11",
             "editorial": "Editorial",
             "estado_consulta": false
         }
@@ -429,7 +429,7 @@
                 "nombre": "Juan P\u00e9rez",
                 "telefono": "123456789",
                 "direccion": "Calle Falsa 123",
-                "nro_socio": "1",
+                "nro_socio": "S0000000001",
                 "ejemplares_prestados": [],
                 "recurso_en_consulta": null,
                 "fecha_solicitud_consulta": null,
@@ -443,7 +443,7 @@
                 "nombre": "Mar\u00eda L\u00f3pez",
                 "telefono": "987654321",
                 "direccion": "Calle Imaginaria 012",
-                "nro_socio": "4",
+                "nro_socio": "S0000000002",
                 "ejemplares_prestados": [],
                 "recurso_en_consulta": null,
                 "fecha_solicitud_consulta": null,
@@ -457,7 +457,7 @@
                 "nombre": "Pedro Mart\u00ednez",
                 "telefono": "123456789",
                 "direccion": "Calle Inventada 789",
-                "nro_socio": "3",
+                "nro_socio": "S0000000003",
                 "ejemplares_prestados": [
                     "PREST-0001",
                     "PREST-0002",
@@ -475,7 +475,7 @@
                 "nombre": "Luis Fern\u00e1ndez",
                 "telefono": "234567890",
                 "direccion": "Calle Real 345",
-                "nro_socio": "5",
+                "nro_socio": "S0000000004",
                 "ejemplares_prestados": [],
                 "recurso_en_consulta": null,
                 "fecha_solicitud_consulta": null,
@@ -489,7 +489,7 @@
                 "nombre": "Laura S\u00e1nchez",
                 "telefono": "345678901",
                 "direccion": "Calle So\u00f1ada 678",
-                "nro_socio": "6",
+                "nro_socio": "S0000000005",
                 "ejemplares_prestados": [],
                 "recurso_en_consulta": null,
                 "fecha_solicitud_consulta": null,
@@ -527,6 +527,6 @@
     "nro_id_libro": 4,
     "nro_id_revista": 4,
     "nro_id_pelicula": 4,
-    "nro_socio": 6,
+    "nro_socio": 5,
     "nro_consulta": 0
 }
