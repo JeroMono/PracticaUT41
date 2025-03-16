@@ -67,9 +67,9 @@ class Usuario:
 class Socio(Usuario):
     nro_socio: str
     ejemplares_prestados: list = field(default_factory=list)
-    recurso_en_consulta: any = None
-    fecha_solicitud_consulta: any = None
-    hora_solicitud_consulta: any = None
+    recurso_en_consulta: EjemplarLibro | Revista | Pelicula = None
+    fecha_solicitud_consulta: str = None
+    hora_solicitud_consulta: str = None
 
     def __hash__(self):
         return hash((self.nif, self.nombre, self.telefono, self.direccion, self.nro_socio))
@@ -93,7 +93,7 @@ class Accion:
 
 @dataclass
 class Consulta(Accion):
-    hora_devolucion: any = None
+    hora_devolucion: str = None
 
     def __hash__(self):
         return hash((self.nif, self.id_uso, self.id_recurso, self.fecha_solicitud, self.hora_solicitud))
@@ -102,7 +102,8 @@ class Consulta(Accion):
 class Prestamo(Accion):
     nro_socio: str
     fecha_max_devolucion: str
-    fecha_devuelto: any = None
+    fecha_devuelto: str = None
+    renovacion: int = 0
 
     def __hash__(self):
         return hash((self.nif, self.id_uso, self.id_recurso, self.fecha_solicitud, self.hora_solicitud, self.fecha_max_devolucion))
@@ -338,10 +339,214 @@ def mostrar_menu_añadir_recurso():
 
 
 def mostrar_menu_eliminar_recurso():
-    pass
+    recurso_seleccionado = encontrar_recurso(LIBRO = True, REVISTA=True, PELICULA = True)
+    if not recurso_seleccionado:
+        print("No se encontró el recurso.")
+        return
+    if isinstance(recurso_seleccionado, Libro):
+        print(f"El libro tiene {len(biblioteca.libros[recurso_seleccionado])} ejemplares.")
+        if not biblioteca.libros[recurso_seleccionado]:
+            print("No hay ejemplares disponibles para eliminar.")
+            while True:
+                try:
+                    opcion = input("¿Deseas eliminar el libro? (S/N): ").upper()
+                except KeyboardInterrupt:
+                    opcion = "N"
+                if opcion == "S":
+                    biblioteca.libros.pop(recurso_seleccionado)
+                    print(f"El libro '{recurso_seleccionado.titulo}' ha sido eliminado.")
+                    biblioteca.guardar_datos()
+                    return
+                else:
+                    print("El libro no ha sido eliminado.")
+                    return
+        for ejemplar in biblioteca.libros[recurso_seleccionado]:
+            print(f"Ejemplar {ejemplar.nro_ejemplar}: {ejemplar.estado_accion}")
+        while True:
+            try:
+                seleccion = input("Seleccione el/los ejemplares a eliminar (separados por comas) o (T)odos: ").upper()
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de recursos")
+                return
+            if seleccion == "T":
+                for ejemplar in biblioteca.libros[recurso_seleccionado]:
+                    if ejemplar.estado_accion != '':
+                        print(f"El ejemplar {ejemplar.nro_ejemplar} no se puede eliminar porque está en uso.")
+                        print("No se pueden todos los ejemplares.")
+                        break
+                else:
+                    biblioteca.libros[recurso_seleccionado] = []
+                    biblioteca.guardar_datos()
+                    print(f"Todos los ejemplares del libro '{recurso_seleccionado.titulo}' han sido eliminados.")
+                    try:
+                        opcion = input("¿Deseas eliminar el libro? (S/N): ").upper()
+                    except KeyboardInterrupt:
+                        opcion = "N"
+                    if opcion == "S":
+                        biblioteca.libros.pop(recurso_seleccionado)
+                        print(f"El libro '{recurso_seleccionado.titulo}' ha sido eliminado.")
+                        biblioteca.guardar_datos()
+                        return
+                    else:
+                        print("El libro no ha sido eliminado.")
+                        return
+            try:
+                seleccion = [int(i) for i in seleccion.split(",")]
+            except ValueError:
+                print("Selección inválida.")
+                continue
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de recursos")
+                return
+            
+            ejemplares = []
+            for ejemplar in seleccion:
+                for ejemplar_libro in biblioteca.libros[recurso_seleccionado]:
+                    if ejemplar_libro.nro_ejemplar == ejemplar:
+                        if ejemplar_libro.estado_accion != '':
+                            print(f"El ejemplar {ejemplar} no se puede eliminar porque está en uso.")
+                        else:
+                            ejemplares.append(ejemplar_libro)
+                        break
+            if not ejemplares:
+                print("No se pueden eliminar los ejemplares seleccionados.")
+                continue
+            while True:
+                print("Ejemplares seleccionados para eliminar:")
+                for ejemplar in ejemplares:
+                    print(f"Ejemplar {ejemplar.nro_ejemplar}")
+                try:
+                    opcion = input("¿Deseas eliminar los ejemplares seleccionados? (S/N): ").upper()
+                except KeyboardInterrupt:
+                    print("\nVolviendo al menú de recursos")
+                    return
+                if opcion == "S":
+                    break
+                elif opcion == "N":
+                    print("Los ejemplares no han sido eliminados.")
+                    return
+            for ejemplar in ejemplares:
+                for ejemplar_libro in biblioteca.libros[recurso_seleccionado]:
+                    if ejemplar_libro.nro_ejemplar == ejemplar.nro_ejemplar:
+                        biblioteca.libros[recurso_seleccionado].remove(ejemplar_libro)
+                        break
+            if not biblioteca.libros[recurso_seleccionado]:
+                print(f"Todos los ejemplares del libro '{recurso_seleccionado.titulo}' han sido eliminados.")
+                try:
+                    opcion = input("¿Deseas eliminar el libro? (S/N): ").upper()
+                except KeyboardInterrupt:
+                    opcion = "N"
+                if opcion == "S":
+                    biblioteca.libros.pop(recurso_seleccionado)
+                    print(f"El libro '{recurso_seleccionado.titulo}' ha sido eliminado.")
+                    biblioteca.guardar_datos()
+                    return
+                else:
+                    print("El libro no ha sido eliminado.")
+                    return
+            else:
+                print(f"Los ejemplares seleccionados han sido eliminados.")
+                biblioteca.guardar_datos()
+                return
+    
+    elif isinstance(recurso_seleccionado, Revista):
+        if recurso_seleccionado.estado_consulta:
+            print("No se puede eliminar la revista porque está en consulta.")
+            return
+        while True:
+            try:
+                opcion = input("¿Deseas eliminar la revista? (S/N): ").upper()
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de recursos")
+                return
+            if opcion == "S":
+                biblioteca.revistas.remove(recurso_seleccionado)
+                biblioteca.guardar_datos()
+                print(f"La revista '{recurso_seleccionado.nombre}' ha sido eliminada.")
+                return
+            else:
+                print("La revista no ha sido eliminada.")
+                return
+            
+    elif isinstance(recurso_seleccionado, Pelicula):
+        print(f"La película tiene {len(biblioteca.peliculas[recurso_seleccionado])} ejemplares.")
+        opciones = []
+        for ejemplar in biblioteca.peliculas[recurso_seleccionado]:
+            if isinstance(ejemplar, PeliculaBiblioteca):
+                print(f"Ejemplar Biblioteca{ejemplar.pelicula}: {ejemplar.estado_local}")
+                opciones.apppend("C")
+            elif isinstance(ejemplar, PeliculaPrestamo):
+                print(f"Ejemplar Préstamo {ejemplar.pelicula}: {ejemplar.estado_prestamo}")
+                opciones.append("P")
+        
+        if not opciones:
+            print("No hay ejemplares disponibles para eliminar.")
+            return
+        
+        if len (opciones) == 1:
+            if opciones[0] == "C":
+                texto_opciones = "(C)onsulta"
+            elif opciones[0] == "P":
+                texto_opciones = "(P)restamo"
+        
+        else:
+            opciones = ", ".join(texto_opciones).join(" o (T)odo")
+            opciones.append("T")
+
+
+        while True:
+            try:
+                seleccion = input(f"Deseas borrar {texto_opciones}: ").upper()
+            except KeyboardInterrupt:
+                print("\nVolviendo al menú de recursos")
+                return
+            if seleccion in opciones:
+                break
+            else:
+                print("Selección inválida.")
+                continue
+        if seleccion == "C" and "C" in opciones:
+            for ejemplar in biblioteca.peliculas[recurso_seleccionado]:
+                if isinstance(ejemplar, PeliculaBiblioteca):
+                    biblioteca.peliculas[recurso_seleccionado].remove(ejemplar)
+                    print(f"El ejemplar {ejemplar.pelicula} ha sido eliminado.")
+                    break
+        elif seleccion == "P" and "P" in opciones:
+            for ejemplar in biblioteca.peliculas[recurso_seleccionado]:
+                if isinstance(ejemplar, PeliculaPrestamo):
+                    biblioteca.peliculas[recurso_seleccionado].remove(ejemplar)
+                    print(f"El ejemplar {ejemplar.pelicula} ha sido eliminado.")
+                    break
+        elif seleccion == "T":
+            biblioteca.peliculas[recurso_seleccionado] = []
+        if not biblioteca.peliculas[recurso_seleccionado]:
+            print(f"Todos los ejemplares de la película '{recurso_seleccionado.titulo}' han sido eliminados.")
+            while True:
+                try:
+                    opcion = input("¿Deseas eliminar la película? (S/N): ").upper()
+                except KeyboardInterrupt:
+                    opcion = "N"
+                    return
+                if opcion == "S":
+                    biblioteca.peliculas.pop(recurso_seleccionado)
+                    biblioteca.guardar_datos()
+                    print(f"La película '{recurso_seleccionado.titulo}' ha sido eliminada.")
+                    return
+                elif opcion == "N":
+                    print("La película no ha sido eliminada.")
+                    return
+                else:
+                    print("Opción inválida.")
+                    continue
+        else:
+            print(f"Los ejemplares seleccionados han sido eliminados.")
+
 
 def mostrar_menu_consultar_estado():
     recurso_prestamo = encontrar_recurso(LIBRO = True, REVISTA=True, PELICULA = True)
+    if not recurso_prestamo:
+        print("No se encontró el recurso.")
+        return
     if isinstance(recurso_prestamo,Revista):
         if comprobar_estado_recurso(recurso_prestamo, True):
             print(f"El libro '{recurso_prestamo.nombre}' está disponible para consulta.")
@@ -365,8 +570,6 @@ def mostrar_menu_consultar_estado():
             print(f"El recurso '{recurso_prestamo.titulo}' está disponible para préstamo.")
         else:
             print(f"El recurso '{recurso_prestamo.titulo}' no está disponible para préstamo.")
-
-        
 
 
 def mostrar_menu_prestamo_consulta():
@@ -681,16 +884,81 @@ def mostrar_menu_devolver():
                 return
             eliminar_consulta(usuario)
 
-            
         else:
             print("La persona no está registrada en la biblioteca. No tiene recursos en su poder.")
             return
             
-        
-        
 
 def mostrar_menu_renovar():
-    pass
+    while True:
+        try:
+            nif = input("Introduce el NIF/NIE de la persona: ")
+            if comprobar_dni(nif):
+                break
+        except KeyboardInterrupt:
+            print("\nVolviendo al menú de recursos")
+            return
+        else:
+            print("El NIF, NIE introducido no es válido.")
+            continue
+    usuario = biblioteca.buscar_socio_nif(nif)
+    if usuario:
+        print("La persona es un socio.")
+        if not usuario.ejemplares_prestados and not usuario.recurso_en_consulta:
+            print("El socio no tiene ejemplares prestados ni recursos en consulta.")
+            return
+    while True:
+        recurso_numero = 1
+        print(f"El socio {usuario.nombre} tiene {len(usuario.ejemplares_prestados)} ejemplares prestados.")
+        for prestamo in usuario.ejemplares_prestados:
+            print(f"{recurso_numero}. {prestamo}")
+            recurso_numero += 1
+        print("0. Volver")
+        try:
+            recurso = int(input("Seleccione el número del recurso a renovar: "))
+            if recurso < 0 or recurso > len(usuario.ejemplares_prestados):
+                raise ValueError
+        except ValueError:
+            print("Opción inválida.")
+            continue
+        except KeyboardInterrupt:
+            print("\nVolviendo al menú de recursos")
+            return
+        if recurso == 0:
+            print("Volviendo al menú de recursos")
+            return
+        prestamo = usuario.ejemplares_prestados[recurso - 1]
+        if biblioteca.prestamos[prestamo].renovacion >= 3:
+            print("El préstamo no se puede renovar más de 3 veces.")
+            return
+        if biblioteca.prestamos[prestamo].fecha_max_devolucion < datetime.now().strftime("%d/%m/%Y"):
+            print("El préstamo no se puede renovar porque está fuera de plazo.")
+            return
+        fecha_max_devolucion = datetime.strptime(biblioteca.prestamos[prestamo].fecha_max_devolucion, "%d/%m/%Y")
+        if fecha_max_devolucion <= (datetime.now() + timedelta(days=5)):
+            print("El préstamo no se puede renovar porque está a menos de 5 días de la fecha máxima de devolución.")
+            return
+
+        recurso_prestamo = biblioteca.prestamos[prestamo].id_recurso
+        tipo = recurso_prestamo.get("libro", None)
+        if tipo:
+            libro = Libro(**recurso_prestamo["libro"])
+            ejemplar = EjemplarLibro(**recurso_prestamo)
+            biblioteca.libros[libro][biblioteca.libros[libro].index(ejemplar)].estado_accion = "Renovado"
+            biblioteca.prestamos[prestamo].fecha_max_devolucion = (datetime.now() + timedelta(days=7)).strftime("%d/%m/%Y")
+            biblioteca.prestamos[prestamo].renovacion += 1
+            print(f"El libro '{recurso_prestamo['titulo']}' ha sido renovado hasta {biblioteca.prestamos[prestamo].fecha_max_devolucion}.")
+            biblioteca.guardar_datos()
+            return
+        else:
+            pelicula = Pelicula(**recurso_prestamo)
+            biblioteca.peliculas[pelicula][1].estado_prestamo = True
+            biblioteca.prestamos[prestamo].fecha_max_devolucion = (datetime.now() + timedelta(days=2)).strftime("%d/%m/%Y")
+            biblioteca.prestamos[prestamo].renovacion += 1
+            print(f"La película '{recurso_prestamo['titulo']}' ha sido renovada hasta {biblioteca.prestamos[prestamo].fecha_max_devolucion}.")
+            biblioteca.guardar_datos()
+            return
+ 
 
 def mostrar_menu_añadir_socio():
     while True:
@@ -881,16 +1149,6 @@ def configurar_pelicula():
         print("\nVolviendo al menú de recursos")
         return
     try:
-        actores_principales = input("Introduce los actores principales (separados por comas): ").split(",")
-    except KeyboardInterrupt:
-        print("\nVolviendo al menú de recursos")
-        return
-    try:
-        actores_secundarios = input("Introduce los actores secundarios (separados por comas): ").split(",")
-    except KeyboardInterrupt:
-        print("\nVolviendo al menú de recursos")
-        return
-    try:
         fecha_publicacion = input("Introduce la fecha de publicación de la película: ")
     except KeyboardInterrupt:
         print("\nVolviendo al menú de recursos")
@@ -899,6 +1157,10 @@ def configurar_pelicula():
     if pelicula:
         while True:
             print(f"La película '{titulo}' ya existe en la biblioteca.")
+            print(pelicula)
+            if len(biblioteca.peliculas[pelicula]) == 2:
+                print("La película ya tiene 2 ejemplares.")
+                return            
             try:
                 opcion = input("Elija una opción: \n1. Añadir ejemplares\n2. Volver\n")
             except KeyboardInterrupt:
@@ -916,11 +1178,19 @@ def configurar_pelicula():
                     except KeyboardInterrupt:
                         print("\nVolviendo al menú de recursos")
                         return
-                    if pelicula.nro_ejemplares + ejemplares > 2:
+                    if len(biblioteca.peliculas[pelicula]) + ejemplares > 2:
                         print(f"El número total de ejemplares de la película '{titulo}' no puede superar 2.")
                         continue
-                    pelicula.nro_ejemplares += ejemplares
-                    print(f"Se han añadido {ejemplares} ejemplares de la película '{titulo}'.")
+                    if ejemplares == 1:
+                        if isinstance(biblioteca.peliculas[pelicula][0], PeliculaBiblioteca):
+                            biblioteca.peliculas[pelicula].append(PeliculaPrestamo(pelicula.__dict__, False))
+                            print(f"Se ha añadido 1 ejemplar de la película '{titulo}' a la biblioteca para préstamo.")
+                        else:
+                            biblioteca.peliculas[pelicula].insert(0, PeliculaBiblioteca(pelicula.__dict__, False))
+                            print(f"Se ha añadido 1 ejemplar de la película '{titulo}' a la biblioteca para consulta.")
+                    else:
+                        biblioteca.peliculas[pelicula] = [PeliculaBiblioteca(pelicula.__dict__, False), PeliculaPrestamo(pelicula.__dict__, False)]
+                        print(f"Se ha añadido 2 ejemplates de la película '{titulo}' a la biblioteca para consulta y préstamo.")
                     break
             elif opcion == "2":
                 print("\nVolviendo al menú de recursos")
@@ -928,6 +1198,16 @@ def configurar_pelicula():
             else:
                 print("Opción inválida")
     else:
+        try:
+            actores_principales = input("Introduce los actores principales (separados por comas): ").split(",")
+        except KeyboardInterrupt:
+            print("\nVolviendo al menú de recursos")
+            return
+        try:
+            actores_secundarios = input("Introduce los actores secundarios (separados por comas): ").split(",")
+        except KeyboardInterrupt:
+            print("\nVolviendo al menú de recursos")
+            return
         while True:
             try:
                 descripcion = input("Introduce la descripción del libro: ")
