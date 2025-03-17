@@ -168,7 +168,7 @@ class Biblioteca:
 
     def agregar_ocasional(self, ocasional) -> None:
         """Agrega el usuario ocasional introducido a la biblioteca."""
-        self.ocasionales.append(ocasional)
+        self.ocasionales[ocasional.nif] = ocasional
 
     def buscar_ocasional(self, nif) -> Ocasional | None:
         """Busca un usuario ocasional por su NIF. Devuelve el usuario ocasional si lo encuentra, None si no."""
@@ -1088,10 +1088,14 @@ def mostrar_menu_renovar() -> None:
             print("El préstamo no se puede renovar porque está fuera de plazo.")
             presionar_intro()
             return
+        
+        recurso_prestamo = biblioteca.prestamos[prestamo].id_recurso
+        tipo = recurso_prestamo.get("libro", None)
+        plazo_renovacion = (3 if tipo else 1)
         fecha_max_devolucion = datetime.strptime(biblioteca.prestamos[prestamo].fecha_max_devolucion, "%Y-%m-%d")
-        if fecha_max_devolucion >= (datetime.now() + timedelta(days=3)):
-            print("El préstamo no se puede renovar porque está a más de 3 días de la fecha máxima de devolución.")
-            print(f"Cuando estés a 3 días de {fecha_max_devolucion}, podrás renovarlo.")
+        if fecha_max_devolucion >= (datetime.now() + timedelta(days=plazo_renovacion)):
+            print(f"El préstamo no se puede renovar porque está a más de {plazo_renovacion} días de la fecha máxima de devolución.")
+            print(f"Cuando estés a {plazo_renovacion} días de {fecha_max_devolucion}, podrás renovarlo.")
             while True:
                 try:
                     opcion_saltar = input("¿Deseas saltar la restricción? (S/N): ").upper()
@@ -2171,7 +2175,8 @@ def presionar_intro() -> None:
     except KeyboardInterrupt:
         pass
 
-def test1():
+def test1() -> None:
+    """FUncion para probar datos si quieres cargarlos"""
     libro1 = Libro("L0000000001", "Libro de prueba", "Autor", "LIBRAZO", "Editorial")
     libro2 = Libro("L0000000002", "Libro de prueba", "Autor", "LIBRAZO2", "Editorial")
     libro3 = Libro("L0000000003", "Libro de prueba", "Autor", "LIBRAZO3", "Editorial")
@@ -2224,11 +2229,29 @@ def test1():
     print("Datos de prueba cargados correctamente.")
 
 if __name__ == "__main__":
+    biblioteca = Biblioteca()
+    while True:
+        try:
+            opcion = input("¿Quieres cargar datos de prueba (si tienes algo lo machaca)? (S)i/(N)o/(V)acío): ").upper()
+        except KeyboardInterrupt:
+            print("\nVolviendo al menú de recursos")
+            break
+        if opcion in ["S", "SI"]:
+            
+            biblioteca = Biblioteca()
+            test1()
+            break
+        elif opcion in ["N", "NO"]:
+            biblioteca = Biblioteca()
+            biblioteca.cargar_datos()
+            break
+        elif opcion in ["V", "VACIO"]:
+            biblioteca = Biblioteca()
+            break
 
-    biblioteca = Biblioteca()
-    testing = False
-    if testing:
-        test1()
-    biblioteca = Biblioteca()
-    biblioteca.cargar_datos()
+        else:
+            print("Opción inválida. Debe ser S o N.")
+            continue
+    print("Control+C para volver atras en cualquier input")
+    presionar_intro()
     mostrar_menu_principal()
