@@ -150,7 +150,7 @@
                         "editorial": "Santillana"
                     },
                     "nro_ejemplar": 2,
-                    "estado_accion": ""
+                    "estado_accion": "Prestamo"
                 }
             ]
         ],
@@ -208,6 +208,83 @@
                     "estado_accion": ""
                 }
             ]
+        ],
+        [
+            {
+                "id": "L0000000006",
+                "descripcion": "LIBRAZO CLASICO",
+                "autor": "Autor",
+                "titulo": "LIBRAZO0",
+                "editorial": "Editorial"
+            },
+            [
+                {
+                    "libro": {
+                        "id": "L0000000006",
+                        "descripcion": "LIBRAZO CLASICO",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO0",
+                        "editorial": "Editorial"
+                    },
+                    "nro_ejemplar": 1,
+                    "estado_accion": "Consulta"
+                },
+                {
+                    "libro": {
+                        "id": "L0000000006",
+                        "descripcion": "LIBRAZO CLASICO",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO0",
+                        "editorial": "Editorial"
+                    },
+                    "nro_ejemplar": 2,
+                    "estado_accion": "Prestamo"
+                },
+                {
+                    "libro": {
+                        "id": "L0000000006",
+                        "descripcion": "LIBRAZO CLASICO",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO0",
+                        "editorial": "Editorial"
+                    },
+                    "nro_ejemplar": 3,
+                    "estado_accion": ""
+                },
+                {
+                    "libro": {
+                        "id": "L0000000006",
+                        "descripcion": "LIBRAZO CLASICO",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO0",
+                        "editorial": "Editorial"
+                    },
+                    "nro_ejemplar": 4,
+                    "estado_accion": ""
+                },
+                {
+                    "libro": {
+                        "id": "L0000000006",
+                        "descripcion": "LIBRAZO CLASICO",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO0",
+                        "editorial": "Editorial"
+                    },
+                    "nro_ejemplar": 5,
+                    "estado_accion": ""
+                },
+                {
+                    "libro": {
+                        "id": "L0000000006",
+                        "descripcion": "LIBRAZO CLASICO",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO0",
+                        "editorial": "Editorial"
+                    },
+                    "nro_ejemplar": 6,
+                    "estado_accion": ""
+                }
+            ]
         ]
     ],
     "revistas": [
@@ -220,12 +297,12 @@
             "estado_consulta": false
         },
         {
-            "id": "R000000000",
-            "descripcion": "Descripci\u00f3n de la revista",
-            "nombre": "Revista2",
-            "fecha_publicacion": "2023-10",
+            "id": "R0000000006",
+            "descripcion": "REVISTA BASICA",
+            "nombre": "REVISTA0",
+            "fecha_publicacion": "2025-02",
             "editorial": "Editorial",
-            "estado_consulta": false
+            "estado_consulta": true
         },
         {
             "id": "R0000000002",
@@ -233,6 +310,14 @@
             "nombre": "Revista1",
             "fecha_publicacion": "2023-11",
             "editorial": "Editorial",
+            "estado_consulta": false
+        },
+        {
+            "id": "R0000000005",
+            "descripcion": "Prensa Rosa",
+            "nombre": "Hola",
+            "fecha_publicacion": "2025-01",
+            "editorial": "Hola",
             "estado_consulta": false
         },
         {
@@ -244,11 +329,11 @@
             "estado_consulta": false
         },
         {
-            "id": "R0000000005",
-            "descripcion": "Prensa Rosa",
-            "nombre": "Hola",
-            "fecha_publicacion": "2025-01",
-            "editorial": "Hola",
+            "id": "R000000000",
+            "descripcion": "Descripci\u00f3n de la revista",
+            "nombre": "Revista2",
+            "fecha_publicacion": "2023-10",
+            "editorial": "Editorial",
             "estado_consulta": false
         }
     ],
@@ -453,6 +538,46 @@
                     "estado_prestamo": false
                 }
             ]
+        ],
+        [
+            {
+                "id": "P0000000006",
+                "descripcion": "caceria de fascitas",
+                "titulo": "Malditos Bastardos",
+                "actores_principales": [
+                    "Brad Pitt"
+                ],
+                "actores_secundarios": [],
+                "fecha_publicacion": "2005-02-25"
+            },
+            [
+                {
+                    "pelicula": {
+                        "id": "P0000000006",
+                        "descripcion": "caceria de fascitas",
+                        "titulo": "Malditos Bastardos",
+                        "actores_principales": [
+                            "Brad Pitt"
+                        ],
+                        "actores_secundarios": [],
+                        "fecha_publicacion": "2005-02-25"
+                    },
+                    "estado_local": false
+                },
+                {
+                    "pelicula": {
+                        "id": "P0000000006",
+                        "descripcion": "caceria de fascitas",
+                        "titulo": "Malditos Bastardos",
+                        "actores_principales": [
+                            "Brad Pitt"
+                        ],
+                        "actores_secundarios": [],
+                        "fecha_publicacion": "2005-02-25"
+                    },
+                    "estado_prestamo": true
+                }
+            ]
         ]
     ],
     "prestamos": [
@@ -523,7 +648,78 @@
                 "fecha_solicitud": "2025-03-11",
                 "hora_solicitud": "21:30:46",
                 "nro_socio": "S0000000001",
-                "fecha_max_devolucion": "2025-03-20",
+                "fecha_max_devolucion": "2025-04-03",
+                "fecha_devuelto": null,
+                "renovacion": 2
+            }
+        ],
+        [
+            "PREST-0000000004",
+            {
+                "nif": "98765432M",
+                "id_uso": "PREST-0000000004",
+                "id_recurso": {
+                    "id": "P0000000006",
+                    "descripcion": "caceria de fascitas",
+                    "titulo": "Malditos Bastardos",
+                    "actores_principales": [
+                        "Brad Pitt"
+                    ],
+                    "actores_secundarios": [],
+                    "fecha_publicacion": "2005-02-25"
+                },
+                "fecha_solicitud": "2025-03-12",
+                "hora_solicitud": "21:54:31",
+                "nro_socio": "S0000000007",
+                "fecha_max_devolucion": "2025-03-19",
+                "fecha_devuelto": null,
+                "renovacion": 0
+            }
+        ],
+        [
+            "PREST-0000000005",
+            {
+                "nif": "98765432M",
+                "id_uso": "PREST-0000000005",
+                "id_recurso": {
+                    "libro": {
+                        "id": "L0000000006",
+                        "descripcion": "LIBRAZO CLASICO",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO0",
+                        "editorial": "Editorial"
+                    },
+                    "nro_ejemplar": 2,
+                    "estado_accion": "Prestamo"
+                },
+                "fecha_solicitud": "2025-03-17",
+                "hora_solicitud": "21:54:42",
+                "nro_socio": "S0000000007",
+                "fecha_max_devolucion": "2025-03-24",
+                "fecha_devuelto": null,
+                "renovacion": 0
+            }
+        ],
+        [
+            "PREST-0000000006",
+            {
+                "nif": "98765432M",
+                "id_uso": "PREST-0000000006",
+                "id_recurso": {
+                    "libro": {
+                        "id": "L0000000004",
+                        "descripcion": "Libro de prueba",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO",
+                        "editorial": "Santillana"
+                    },
+                    "nro_ejemplar": 2,
+                    "estado_accion": "Prestamo"
+                },
+                "fecha_solicitud": "2025-03-11",
+                "hora_solicitud": "21:55:10",
+                "nro_socio": "S0000000007",
+                "fecha_max_devolucion": "2025-03-18",
                 "fecha_devuelto": null,
                 "renovacion": 0
             }
@@ -610,6 +806,45 @@
                 "hora_solicitud": "21:21:31",
                 "hora_devolucion": "21:21:40"
             }
+        ],
+        [
+            "CON-0000000005",
+            {
+                "nif": "98765432M",
+                "id_uso": "CON-0000000005",
+                "id_recurso": {
+                    "id": "R0000000006",
+                    "descripcion": "REVISTA BASICA",
+                    "nombre": "REVISTA0",
+                    "fecha_publicacion": "2025-02",
+                    "editorial": "Editorial",
+                    "estado_consulta": true
+                },
+                "fecha_solicitud": "2025-03-16",
+                "hora_solicitud": "21:57:28",
+                "hora_devolucion": null
+            }
+        ],
+        [
+            "CON-0000000006",
+            {
+                "nif": "43491650F",
+                "id_uso": "CON-0000000006",
+                "id_recurso": {
+                    "libro": {
+                        "id": "L0000000006",
+                        "descripcion": "LIBRAZO CLASICO",
+                        "autor": "Autor",
+                        "titulo": "LIBRAZO0",
+                        "editorial": "Editorial"
+                    },
+                    "nro_ejemplar": 1,
+                    "estado_accion": "Consulta"
+                },
+                "fecha_solicitud": "2025-03-17",
+                "hora_solicitud": "22:25:55",
+                "hora_devolucion": null
+            }
         ]
     ],
     "socios": [
@@ -624,9 +859,9 @@
                 "ejemplares_prestados": [
                     "PREST-0000000003"
                 ],
-                "recurso_en_consulta": null,
-                "fecha_solicitud_consulta": "2025-03-16",
-                "hora_solicitud_consulta": "21:20:31"
+                "recurso_en_consulta": "CON-0000000006",
+                "fecha_solicitud_consulta": "2025-03-17",
+                "hora_solicitud_consulta": "22:25:55"
             }
         ],
         [
@@ -658,20 +893,6 @@
             }
         ],
         [
-            "98765432M",
-            {
-                "nif": "98765432M",
-                "nombre": "Luis Fern\u00e1ndez",
-                "telefono": "234567890",
-                "direccion": "Calle Real 345",
-                "nro_socio": "S0000000005",
-                "ejemplares_prestados": [],
-                "recurso_en_consulta": null,
-                "fecha_solicitud_consulta": null,
-                "hora_solicitud_consulta": null
-            }
-        ],
-        [
             "56789012B",
             {
                 "nif": "56789012B",
@@ -683,6 +904,24 @@
                 "recurso_en_consulta": null,
                 "fecha_solicitud_consulta": null,
                 "hora_solicitud_consulta": null
+            }
+        ],
+        [
+            "98765432M",
+            {
+                "nif": "98765432M",
+                "nombre": "Luis Fernandez",
+                "telefono": "45678946543",
+                "direccion": "Calle Casi llego",
+                "nro_socio": "S0000000007",
+                "ejemplares_prestados": [
+                    "PREST-0000000004",
+                    "PREST-0000000005",
+                    "PREST-0000000006"
+                ],
+                "recurso_en_consulta": "CON-0000000005",
+                "fecha_solicitud_consulta": "2025-03-16",
+                "hora_solicitud_consulta": "21:57:28"
             }
         ]
     ],
@@ -712,10 +951,10 @@
             }
         ]
     ],
-    "nro_prestamo": 3,
-    "nro_id_libro": 5,
-    "nro_id_revista": 5,
-    "nro_id_pelicula": 5,
-    "nro_socio": 6,
-    "nro_consulta": 4
+    "nro_prestamo": 6,
+    "nro_id_libro": 6,
+    "nro_id_revista": 6,
+    "nro_id_pelicula": 6,
+    "nro_socio": 7,
+    "nro_consulta": 6
 }

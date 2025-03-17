@@ -843,6 +843,10 @@ def mostrar_menu_prestamo_consulta() -> None:
                         recurso_consulta = recurso_consulta.__dict__
                         print(f"La película '{ejemplar.__dict__['pelicula']['titulo']}' ha sido registrada para consulta.")
 
+                    else:
+                        print("El recurso no está disponible para consulta.")
+                        return None
+
                     fecha = str(configurar_fecha_prestamo())
                     if not fecha:
                         print("No se ha podido registrar la consulta.")
@@ -857,6 +861,10 @@ def mostrar_menu_prestamo_consulta() -> None:
 
                     biblioteca.guardar_datos()
                     print("Consulta registrada.")
+                    presionar_intro()
+                    return
+                else:
+                    print("El recurso no está disponible para consulta.")
                     presionar_intro()
                     return
             else:
@@ -888,10 +896,20 @@ def mostrar_menu_devolver() -> None:
             recurso_numero = 1
             print(f"El socio {usuario.nombre} tiene {len(usuario.ejemplares_prestados)} ejemplares prestados y {(1 if usuario.recurso_en_consulta else 0)} recursos en consulta.")
             for prestamo in usuario.ejemplares_prestados:
-                print(f"{recurso_numero}. {prestamo}")
+                print(f"{recurso_numero}. {prestamo} -> ", end="")
+                if biblioteca.prestamos[prestamo].id_recurso.get("libro", None):
+                    print(f"{biblioteca.prestamos[prestamo].id_recurso['libro']['titulo']}")
+                else:
+                    print(f"{biblioteca.prestamos[prestamo].id_recurso['titulo']}")
                 recurso_numero += 1
             if usuario.recurso_en_consulta:
-                print(f"{recurso_numero}. {usuario.recurso_en_consulta}")
+                print(f"{recurso_numero}. {usuario.recurso_en_consulta} -> ", end="")
+                if biblioteca.consultas[usuario.recurso_en_consulta].id_recurso.get("libro", None):
+                    print(f"{biblioteca.consultas[usuario.recurso_en_consulta].id_recurso['libro']['titulo']}")
+                elif biblioteca.consultas[usuario.recurso_en_consulta].id_recurso["id"][0] == "R":
+                    print(f"{biblioteca.consultas[usuario.recurso_en_consulta].id_recurso['nombre']}")
+                else:
+                    print(f"{biblioteca.consultas[usuario.recurso_en_consulta].id_recurso['titulo']}")
                 recurso_numero += 1
             print("0. Volver")
             try:
@@ -901,24 +919,45 @@ def mostrar_menu_devolver() -> None:
                 return
             if recurso.upper() == "T":
                 for prestamo in usuario.ejemplares_prestados:
-                    biblioteca.prestamos[prestamo].fecha_devuelto = datetime.now().strftime("%Y-%m-%d")
-                    if isinstance(prestamo, EjemplarLibro):
-                        libro = Libro(**prestamo.id_recurso["libro"])
-                        ejemplar = EjemplarLibro(**prestamo.id_recurso)
+                    recurso_prestamo = biblioteca.prestamos[prestamo].id_recurso
+                    tipo = recurso_prestamo.get("libro", "id")
+                    if tipo  != "id":
+                        libro = Libro(**recurso_prestamo["libro"])
+                        ejemplar = EjemplarLibro(**recurso_prestamo)
                         biblioteca.libros[libro][biblioteca.libros[libro].index(ejemplar)].estado_accion = ""
-                    elif isinstance(prestamo, PeliculaPrestamo):
-                        biblioteca.peliculas[prestamo.id_recurso['pelicula']][1].estado_prestamo = False
-                    print(f"El recurso {prestamo} ha sido devuelto.")
+                        biblioteca.prestamos[prestamo].fecha_devuelto = datetime.now().strftime("%Y-%m-%d")
+                    else:
+                        pelicula = Pelicula(**recurso_prestamo)
+                        biblioteca.peliculas[pelicula][1].estado_prestamo = False
+                        biblioteca.prestamos[prestamo].fecha_devuelto = datetime.now().strftime("%Y-%m-%d")
+                    if biblioteca.prestamos[prestamo].fecha_max_devolucion < biblioteca.prestamos[prestamo].fecha_devuelto:
+                        print(f"El recurso {prestamo} ha sido devuelto fuera de plazo.")
+                    else:
+                        print(f"El recurso {prestamo} ha sido devuelto a tiempo.")
                 if usuario.recurso_en_consulta:
-                    biblioteca.consultas[usuario.recurso_en_consulta].hora_devolucion = datetime.now().strftime("%H:%M:%S")
-                    if isinstance(usuario.recurso_en_consulta, Revista):
-                        biblioteca.revistas[usuario.recurso_en_consulta].estado_consulta = False
-                    elif isinstance(usuario.recurso_en_consulta, PeliculaBiblioteca):
-                        biblioteca.peliculas[usuario.recurso_en_consulta][0].estado_local = False
-                    elif isinstance(usuario.recurso_en_consulta, EjemplarLibro):
-                        biblioteca.libros[usuario.recurso_en_consulta.libro][biblioteca.libros[usuario.recurso_en_consulta.libro].index(usuario.recurso_en_consulta)].estado_accion = ""
-                    print(f"El recurso {usuario.recurso_en_consulta} ha sido devuelto.")
+                    consulta = usuario.recurso_en_consulta
+                    recurso_consulta = biblioteca.consultas[consulta].id_recurso
+                    tipo = recurso_consulta.get("libro", "id")
+                    if tipo != "id":
+                        libro = Libro(**recurso_consulta["libro"])
+                        ejemplar = EjemplarLibro(**recurso_consulta)
+                        biblioteca.libros[libro][biblioteca.libros[libro].index(ejemplar)].estado_accion = ""
+                    
+                    elif recurso_consulta["id"][0] == "R":
+                        for revista in biblioteca.revistas:
+                            if revista.id == recurso_consulta["id"]:
+                                revista.estado_consulta = False
+                                break
+
+                    else:
+                        pelicula = Pelicula(**recurso_consulta)
+                        biblioteca.peliculas[pelicula][1].estado_prestamo = False
+                    
+                    biblioteca.consultas[consulta].hora_devolucion = datetime.now().strftime("%H:%M:%S")
+                    
                     usuario.recurso_en_consulta = None
+                    
+                    print(f"El recurso {consulta} ha sido devuelto.")
                 usuario.ejemplares_prestados = []
                 biblioteca.guardar_datos()
                 print("Todos los recursos han sido devueltos.")
@@ -962,21 +1001,21 @@ def mostrar_menu_devolver() -> None:
 
             elif recurso < len(usuario.ejemplares_prestados) + (1 if usuario.recurso_en_consulta else 0):
                 consulta = usuario.recurso_en_consulta
-                recurso_consulta = biblioteca.consultas[consulta]
-                tipo = recurso_consulta.id_recurso.get("libro", "id")
+                recurso_consulta = biblioteca.consultas[consulta].id_recurso
+                tipo = recurso_consulta.get("libro", "id")
                 if tipo != "id":
-                    libro = Libro(**recurso_consulta.id_recurso["libro"])
-                    ejemplar = EjemplarLibro(**recurso_consulta.id_recurso)
+                    libro = Libro(**recurso_consulta["libro"])
+                    ejemplar = EjemplarLibro(**recurso_consulta)
                     biblioteca.libros[libro][biblioteca.libros[libro].index(ejemplar)].estado_accion = ""
                 
-                elif recurso_consulta.id_recurso["id"][0] == "R":
+                elif recurso_consulta["id"][0] == "R":
                     for revista in biblioteca.revistas:
-                        if revista.id == recurso_consulta.id_recurso:
+                        if revista.id == recurso_consulta["id"]:
                             revista.estado_consulta = False
                             break
 
                 else:
-                    pelicula = Pelicula(**recurso_consulta.id_recurso)
+                    pelicula = Pelicula(**recurso_consulta)
                     biblioteca.peliculas[pelicula][1].estado_prestamo = False
                 
                 biblioteca.consultas[consulta].hora_devolucion = datetime.now().strftime("%H:%M:%S")
